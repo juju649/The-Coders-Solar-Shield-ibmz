@@ -1,66 +1,84 @@
 # Solar Shield
-### Predicting solar drops 15 minutes ahead, and protecting the people who need power most.
-**IBM Z Datathon 2026 · Track: Wildcard · Event code: SSF2026**
-**Team:** Sarosha · Ashlesh · Naomi · Juwairiya  
 
-🎥 Demo video: *(link coming soon)*  ·  📊 Slide deck: *(coming soon)*  ·  🗺️ Risk map: *(coming soon)*
+We forecast drops in Texas solar power 15 minutes ahead and suggest which batteries should cover the people who need power most.
 
-## The Problem
-When a cloud passes over a solar farm, its output can drop by half within
-minutes. The power grid has to stay balanced every second, so sudden drops
-can cause outages. Batteries can fill the gap instantly, but grid operators
-need to know when a drop is coming, and where power matters most.
+IBM Z Datathon 2026 · Wildcard track · Event code SSF2026
+Team: Sarosha, Aashlesha, Naomi, Juwairiya
 
-## Our Idea (Why It's a Wildcard)
-Most grid tools focus on cost. We ask: **who needs power most?**
+**Live app (running on IBM LinuxONE):** http://148.100.98.89:5000
+Demo video: coming soon · Slides: coming soon
 
-Our system:
-1. Watches solar output and weather data for West Texas
-2. Uses a machine learning model on **IBM Z (LinuxONE)** to predict a sharp solar drop 15 minutes before it happens
-3. Checks a map of hospitals, battery sites, and ZIP codes with many patients on electricity-dependent medical equipment (oxygen, dialysis)
-4. Recommends which battery to use to protect the most vulnerable people
+## Why we built this
 
-**A human operator always approves. The AI only advises.**
+Every evening Texas loses around 30,000 MW of solar as the sun goes down, sometimes over 2,000 MW in 15 minutes. Clouds cause sudden drops too. Batteries can cover the gap, but operators need a heads-up, and they need to know where the power matters most. When the grid struggles, hospitals and people on home oxygen or dialysis are hit first.
 
-## Architecture
-*(Diagram coming soon)*
+## What it does
 
-## Proof We Run on IBM Z (LinuxONE)
-*(Screenshot of `uname -m` showing `s390x` coming soon)*
-- Model trained and tested on IBM LinuxONE Community Cloud
-- Prediction latency: **[X] ms per prediction**
-- Screenshots: see [docs/linuxone](docs/linuxone)
+1. Forecasts ERCOT solar output 15 minutes ahead, using a model that runs on IBM LinuxONE
+2. Raises an alert when it expects a drop of 400 MW or more
+3. Looks up the ZIP codes with the most electricity-dependent patients, the nearest hospitals, and nearby battery sites
+4. Recommends which batteries to use. An operator approves or dismisses every recommendation.
+
+## How it works
+
+```
+ERCOT solar + weather → features.csv → model on LinuxONE → alert
+hospitals + batteries + patient counts ──────────────────→ battery recommendation → operator
+```
 
 ## Data
-*(Ashlesh: sources, date range, how we define a "drop", row count)*
+
+- **ERCOT Fuel Mix:** statewide solar, every 15 minutes, April–September 2026
+- **Open-Meteo:** weather averaged over 5 Texas solar regions
+- **HHS emPOWER:** electricity-dependent patients by ZIP code (aggregated, no personal data)
+- **HIFLD Next:** 876 Texas hospitals
+- **EIA-860:** 205 Texas battery sites
+
+We first tried labeling a "drop" as a 20% fall in 15 minutes, but almost every one of those turned out to be sunset. So instead we predict the actual change in MW, and treat a fall of 500 MW or more as a ramp-down.
 
 ## Model
-*(Sarosha: baseline vs. model, how we split by date)*
 
-## Results
-*(Baseline vs. model on precision, recall, and F1)*
+Gradient boosting (scikit-learn). It compares today's output to a clear-sky reference built from the past 14 days, so it can tell normal sunset apart from weather. We trained on April–July and tested on August–September, which the model never saw.
 
-## Impact & Responsible Design
-- Aggregated ZIP-level data only, with no personal information
-- A human operator approves every recommendation
-- No real equipment is controlled; this is a decision-support prototype
+## Results (Aug–Sep 2026)
 
-## Why IBM Z
-Fast AI predictions right where the data lives, reliability for systems
-that can't fail, and strong security for critical infrastructure.
+| | Model | Smart persistence | Better by |
+|---|---|---|---|
+| All daylight | 331 MW error | 465 MW error | 29% |
+| Evening | 426 MW | 620 MW | 31% |
+| Midday | 290 MW | 326 MW | 11% |
 
-## How to Run
-1. Open the LinuxONE Jupyter Lab environment
-2. Upload `data/features.csv`
-3. Run the model notebook in `notebooks/`, then the demo notebook
+Ramp-down alerts: F1 **0.82**, vs 0.76 for a simple rule. In the evening we catch 99% of ramp-downs.
 
-## Repository Structure
-| Folder | Contents |
+Midday cloud drops are still hard to catch, because hourly weather data can't see individual clouds. Satellite imagery would be the next step.
+
+## Running on IBM Z
+
+- Trained and served on IBM LinuxONE Community Cloud (s390x)
+- Training takes about 7 seconds; each forecast takes about 12 microseconds in batch
+- Model exported to ONNX for IBM Z's AI accelerator
+- Backend status: http://148.100.98.89:5000/api/status
+- Screenshots in [`docs/`](docs/)
+
+## Responsible design
+
+- Only aggregated ZIP-level health data
+- A human approves every action, and every decision is logged
+- It doesn't control any real equipment
+- Recommendations are based on location; we don't know actual grid connections or battery charge
+
+## Repo layout
+
+| Folder | What's in it |
 |---|---|
-| [notebooks](notebooks) | Model and demo notebooks (outputs saved) |
-| [src](src) | Battery recommendation function |
-| [data](data) | Cleaned data files |
-| [docs](docs) | Diagram, screenshots, deck |
+| `notebooks/` | Data prep and model notebooks |
+| `app/` | Web app (backend + frontend) |
+| `src/` | Battery recommendation and map code |
+| `data/` | Cleaned data and results |
+| `docs/` | Screenshots |
 
-## Resources
-See [RESOURCES.md](RESOURCES.md)
+## How to run
+
+1. Run the data prep notebook to make `features.csv`
+2. In LinuxONE Jupyter, put `features.csv` in `shared/` and run `notebooks/grid_resilience_model.ipynb`
+3. Start the app with Docker (see [`app/README.md`](app/README.md))
