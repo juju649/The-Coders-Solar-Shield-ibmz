@@ -105,7 +105,7 @@ ALIASES = {
     "lat": ["latitude", "lat", "y"],
     "lon": ["longitude", "lon", "lng", "long", "x"],
     "capacity_mw": ["capacity_mw", "capacity", "nameplate_mw", "mw", "power_mw", "nameplate_capacity_mw"],
-    "patients": ["patients", "count", "beneficiaries", "electricity_dependent", "power_dependent", "total"],
+    "patients": ["patients", "at_risk_count", "count", "beneficiaries", "electricity_dependent", "power_dependent", "total"],
     "zip": ["zip", "zipcode", "zip_code", "zcta", "zcta5"],
 }
 
@@ -153,9 +153,18 @@ class Recommender:
     def load(self):
         try:
             h = normalize(pd.read_csv(os.path.join(DATA_DIR, "hospitals_tx.csv")), ["name", "lat", "lon"])
-            b = normalize(pd.read_csv(os.path.join(DATA_DIR, "batteries_tx.csv")), ["name", "lat", "lon", "capacity_mw"])
-            z = normalize(pd.read_csv(os.path.join(DATA_DIR, "zip_risk_tx.csv")), ["zip", "lat", "lon", "patients"])
-            self.hospitals, self.batteries, self.zips, self.source, self.note = h, b, z, "real", "Using team data files"
+            braw = pd.read_csv(os.path.join(DATA_DIR, "batteries_tx.csv"))
+            if "technology" in braw.columns:                      # Naomi's filter: battery storage only
+                braw = braw[braw["technology"].astype(str).str.strip() == "Batteries"]
+            b = normalize(braw, ["name", "lat", "lon", "capacity_mw"])
+            zpath = os.path.join(DATA_DIR, "zip_risk_coordinates_tx.csv")
+            if not os.path.exists(zpath):
+                zpath = os.path.join(DATA_DIR, "zip_risk_tx.csv")
+            z = normalize(pd.read_csv(zpath, dtype=str), ["zip", "lat", "lon", "patients"])
+            z = z[z["lon"] > -104.6]          # El Paso / far west Texas is on the WECC grid, not ERCOT
+            self.hospitals, self.batteries, self.zips, self.source = h, b, z, "real"
+            self.note = (f"Team data: {len(h):,} hospitals (HIFLD), {len(b):,} battery sites (EIA-860), "
+                         f"{len(z):,} ZIP codes with {int(z['patients'].sum()):,} electricity-dependent patients (emPOWER)")
         except Exception as e:                                           # files missing or columns differ
             self.hospitals, self.batteries, self.zips = SAMPLE["hospitals"], SAMPLE["batteries"], SAMPLE["zips"]
             self.source = "sample"
@@ -168,39 +177,55 @@ class Recommender:
         else:
             z["near_hospital"] = False
         z["priority"] = z["patients"].fillna(0) * np.where(z["near_hospital"], 1.5, 1.0)
-        self.zips = z.sort_values("priority", ascending=False)
+        self.zips = z.sort_values("priority", ascending=False).reset_index(drop=True)
 
-    def recommend(self, drop_mw, top_zips=5, radius_km=100, max_sites=3):
+    def recommend(self, drop_mw, top_zips=5, zip_radius_km=50, max_sites=3):
+        """Naomi's rule, applied to the statewide drop: start at the highest-risk ZIP codes,
+        group at-risk ZIPs within 50 km, find the nearest hospitals and the closest battery
+        for each area, and add batteries until the forecast drop is covered."""
         drop_mw = abs(float(drop_mw))
-        targets = self.zips.head(top_zips)
-        b = self.batteries.dropna(subset=["capacity_mw"]).copy()
-        if b.empty or targets.empty:
-            return {"text": "No battery or ZIP data available.", "batteries": [], "zips": []}
-        d = haversine_km(b["lat"].values[:, None], b["lon"].values[:, None],
-                         targets["lat"].values[None, :], targets["lon"].values[None, :])
-        b["covered_patients"] = (np.where(d <= radius_km, 1, 0) * targets["patients"].fillna(0).values[None, :]).sum(axis=1)
-        b = b[b["covered_patients"] > 0].sort_values(["covered_patients", "capacity_mw"], ascending=False)
-        chosen, total = [], 0.0
-        for r in b.itertuples():
-            chosen.append({"name": str(r.name), "capacity_mw": round(float(r.capacity_mw), 1),
-                           "lat": float(r.lat), "lon": float(r.lon), "covered_patients": int(r.covered_patients)})
-            total += float(r.capacity_mw)
+        b = self.batteries.dropna(subset=["capacity_mw"]).reset_index(drop=True)
+        if b.empty or self.zips.empty:
+            return {"text": "No battery or ZIP data available.", "batteries": [], "zips": [], "hospitals": []}
+        chosen, used, zips_out, hosp_out, total, anchors = [], set(), [], [], 0.0, []
+        for anchor in self.zips.itertuples():
+            if any(haversine_km(anchor.lat, anchor.lon, a[0], a[1]) < zip_radius_km * 2 for a in anchors):
+                continue                                          # one recommendation per distinct area
+            anchors.append((anchor.lat, anchor.lon))
+            dz = haversine_km(anchor.lat, anchor.lon, self.zips["lat"].values, self.zips["lon"].values)
+            area = self.zips[dz <= zip_radius_km].sort_values("patients", ascending=False).head(top_zips)
+            db = haversine_km(anchor.lat, anchor.lon, b["lat"].values, b["lon"].values)
+            free = [j for j in range(len(b)) if j not in used]
+            near = [j for j in free if db[j] <= 100]
+            if not free:
+                break
+            j = max(near, key=lambda k: b.iloc[k]["capacity_mw"]) if near else min(free, key=lambda k: db[k])
+            used.add(j); r = b.iloc[j]
+            people = int(area["patients"].sum())
+            chosen.append({"name": str(r["name"]), "capacity_mw": round(float(r["capacity_mw"]), 1),
+                           "lat": float(r["lat"]), "lon": float(r["lon"]), "distance_km": round(float(db[j]), 1),
+                           "covered_patients": people})
+            for zr in area.itertuples():
+                zips_out.append({"zip": str(zr.zip), "patients": int(zr.patients), "lat": float(zr.lat),
+                                 "lon": float(zr.lon), "near_hospital": bool(zr.near_hospital),
+                                 "battery": len(chosen) - 1})
+            if len(self.hospitals):
+                dh = haversine_km(anchor.lat, anchor.lon, self.hospitals["lat"].values, self.hospitals["lon"].values)
+                k = int(np.argmin(dh))
+                hosp_out.append({"name": str(self.hospitals.iloc[k]["name"]).title(), "distance_km": round(float(dh[k]), 1)})
+            total += float(r["capacity_mw"])
             if total >= drop_mw or len(chosen) >= max_sites:
                 break
-        zips = [{"zip": str(r.zip), "patients": int(r.patients), "lat": float(r.lat), "lon": float(r.lon),
-                 "near_hospital": bool(r.near_hospital)} for r in targets.itertuples()]
-        patients = sum(z["patients"] for z in zips)
-        if chosen:
-            names = ", ".join(f'{c["name"]} ({c["capacity_mw"]:.0f} MW)' for c in chosen)
-            text = (f"Solar drop of ~{drop_mw:,.0f} MW expected in 15 min. Recommend discharging {names} "
-                    f"to support the highest-risk ZIP codes (~{patients:,} electricity-dependent patients). "
-                    f"Operator approval required.")
-        else:
-            text = "No battery within range of the highest-risk ZIP codes. Escalate to operator."
-        return {"text": text, "batteries": chosen, "zips": zips, "covered_mw": round(total, 1),
-                "source": self.source}
+        patients = sum(z["patients"] for z in zips_out)
+        names = ", ".join(f'{c["name"]} ({c["capacity_mw"]:.0f} MW)' for c in chosen)
+        text = (f"Solar drop of ~{drop_mw:,.0f} MW expected in 15 min. Recommend discharging {names} "
+                f"to support the highest-risk ZIP codes (~{patients:,} electricity-dependent patients) "
+                f"and nearby hospitals. Operator approval required. Geographic planning recommendation: "
+                f"grid connectivity and battery state of charge are not confirmed.")
+        return {"text": text, "batteries": chosen, "zips": zips_out, "hospitals": hosp_out[:4],
+                "covered_mw": round(total, 1), "people": patients, "source": self.source}
 
-    def map_data(self, limit=400):
+    def map_data(self, limit=2500):
         return {"source": self.source, "note": self.note,
                 "hospitals": self.hospitals.head(limit).to_dict("records"),
                 "batteries": self.batteries.head(limit).to_dict("records"),

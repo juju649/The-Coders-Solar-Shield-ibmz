@@ -313,7 +313,7 @@ async function boot(){
     const s = await api('/api/status');
         $('platformText').textContent = s.platform==='s390x' ? 'Live on IBM LinuxONE (s390x)' : `Running on ${s.platform}`;
     results(s.results);
-    if(s.recommendation_data==='sample') $('mapNote').innerHTML='<span class="sample">Showing sample sites until the team data files are loaded.</span>';
+    $('mapNote').innerHTML = s.recommendation_data==='sample' ? '<span class="sample">Showing sample sites until the team data files are loaded.</span>' : s.recommendation_note;
     const days = await api('/api/days');
     buildDays(days);
     const best=[...days].sort((a,b)=>b.caught-a.caught)[0];
@@ -431,7 +431,7 @@ hero.addEventListener('pointermove',e=>{
 /* ---------- alerts ---------- */
 async function showAlert(p, fromPlay){
   const rec = await api('/api/recommend?drop_mw='+Math.abs(p.predicted_change));
-  const people = rec.zips.reduce((s,z)=>s+z.patients,0);
+  const people = rec.people ?? rec.zips.reduce((s,z)=>s+z.patients,0);
   current={time:`${DAY.day} ${p.t}`, predicted_change_mw:p.predicted_change, recommendation:rec.text, batteries:rec.batteries.map(b=>b.name), people, rec};
   const card=$('alertCard'); card.classList.add('live');
   const frac=Math.min(1,Math.abs(p.predicted_change)/2500), C=2*Math.PI*40;
@@ -444,6 +444,7 @@ async function showAlert(p, fromPlay){
     <h3>Ramp-down coming in 15 minutes</h3>
     <p class="rec">Dispatch these batteries to cover about ${fmt(people)} electricity-dependent patients in the highest-risk ZIP codes.</p>
     <div class="dispatch">${rec.batteries.map(b=>`<div><span>${b.name}</span><b>${fmt(b.capacity_mw)} MW</b></div>`).join('')||'<div>No battery within range. Escalate.</div>'}</div>
+    ${rec.hospitals&&rec.hospitals.length?`<p class="rec" style="margin-top:-6px">Nearby hospitals: ${rec.hospitals.slice(0,3).map(h=>h.name).join(', ')}</p>`:''}
     ${rec.source==='sample'?'<span class="sample">Sample sites</span>':''}
     <div class="actions"><button class="btn approve" onclick="decide('approved')">Approve dispatch</button><button class="btn dismiss" onclick="decide('dismissed')">Dismiss</button></div>`;
   requestAnimationFrame(()=>{ const r=$('ringP'); if(r) r.style.strokeDashoffset=C*(1-frac); });
@@ -499,16 +500,16 @@ async function initMap(){
   map=L.map('map',{scrollWheelZoom:false}).setView([31.2,-99.3],6);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles © Esri'}).addTo(map);
   const maxP=Math.max(...MAP.zips.map(z=>z.patients||0),1);
-  MAP.zips.forEach(z=>L.circle([z.lat,z.lon],{radius:2500+22000*(z.patients||0)/maxP,color:'#FFB020',weight:1,fillOpacity:.3}).bindTooltip(`ZIP ${z.zip}: ${z.patients} patients`).addTo(map));
-  MAP.hospitals.forEach(h=>L.circleMarker([h.lat,h.lon],{radius:4,color:'#E8384F',fillOpacity:.9,weight:1}).bindTooltip(h.name).addTo(map));
+  MAP.zips.forEach(z=>L.circle([z.lat,z.lon],{radius:1500+14000*Math.sqrt((z.patients||0)/maxP),color:'#FFB020',weight:1,fillOpacity:.3}).bindTooltip(`ZIP ${z.zip}: ${z.patients} patients`).addTo(map));
+  MAP.hospitals.forEach(h=>L.circleMarker([h.lat,h.lon],{radius:3,color:'#E8384F',fillOpacity:.85,weight:1}).bindTooltip(h.name).addTo(map));
   MAP.batteries.forEach(b=>L.circleMarker([b.lat,b.lon],{radius:6,color:'#1FA463',fillOpacity:.9,weight:1}).bindTooltip(`${b.name}: ${b.capacity_mw} MW`).addTo(map));
   flowLayer=L.layerGroup().addTo(map);
 }
 function showFlow(rec, approved){
   if(!map) return; flowLayer.clearLayers();
-  rec.batteries.forEach(b=>{
+  rec.batteries.forEach((b,bi)=>{
     L.circleMarker([b.lat,b.lon],{radius:approved?14:11,color:'#1FA463',weight:3,fillOpacity:approved?.35:.1}).bindTooltip(`${approved?'Dispatched':'Proposed'}: ${b.name}`).addTo(flowLayer);
-    rec.zips.forEach(z=>L.polyline([[b.lat,b.lon],[z.lat,z.lon]],{color:approved?'#1FA463':'#E8384F',weight:approved?3:2,opacity:.8,className:'flow'}).addTo(flowLayer));
+    rec.zips.filter(z=>z.battery===undefined||z.battery===bi).forEach(z=>L.polyline([[b.lat,b.lon],[z.lat,z.lon]],{color:approved?'#1FA463':'#E8384F',weight:approved?3:2,opacity:.8,className:'flow'}).addTo(flowLayer));
   });
 }
 
