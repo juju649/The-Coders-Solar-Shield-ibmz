@@ -1,0 +1,208 @@
+plant_code,name,latitude,longitude,technology,capacity_mw,energy_mwh
+8063.0,DeCordova Steam Electric Station,32.403056,-97.700556,Batteries,269.1,263
+56961.0,Notrees Windpower Hybrid,31.995,-102.828333,Batteries,36.0,13.6
+56981.0,Pyron Wind Farm LLC Hybrid,32.5886,-100.6728,Batteries,9.9,9.9
+56984.0,Inadale Wind Farm LLC Hybrid,32.4969,-100.5797,Batteries,9.9,9.9
+59118.0,Cameron Wind 1 LLC,26.195278,-97.466111,Batteries,16.4,32.8
+60123.0,Castle Gap Solar Hybrid,31.255,-102.272,Batteries,9.9,42
+60649.0,Rabbit Hill Energy Storage Project,30.587828,-97.687023,Batteries,9.9,9.9
+60690.0,"Blue Summit Storage, LLC",34.299,-99.399,Batteries,30.0,12.6
+61741.0,Kingsberry Energy Storage System,30.266028,-97.686139,Batteries,1.5,3
+61742.0,System Control Center,30.219946,-97.708808,Flywheels,2.5,2.5
+61742.0,System Control Center,30.219946,-97.708808,Flywheels,2.5,2.5
+62561.0,"Roadrunner, LLC Hybrid",31.219444,-102.19222,Batteries,63.3,108.6
+62562.0,"High Lonesome Wind Power, LLC Hybrid",31.171652,-101.881147,Batteries,63.3,81
+62609.0,Commerce ESS,29.43445,-98.61765,Batteries,10.0,10
+62753.0,Prospect Storage,29.149166,-95.651111,Batteries,9.9,10
+63255.0,2W Permian Solar Project Hybrid,32.116388,-102.528333,Batteries,40.0,40
+63737.0,Chisholm Grid Energy Storage System,32.904444,-97.386111,Batteries,100.0,125
+63757.0,Madero Grid,26.169846,-98.329793,Batteries,100.0,100
+63892.0,Lily Solar Hybrid,32.533273,-96.428985,Batteries,55.2,80.5
+63905.0,Azure Sky Solar,33.021601,-99.61463,Batteries,91.2,80.5
+64089.0,Ignacio Grid Energy Storage System,26.166944,-98.325,Batteries,100.0,100
+64164.0,"Azure Sky Wind Project, LLC Hybrid",33.169139,-99.266006,Batteries,120.0,190
+64293.0,Alvin,29.433245,-95.249367,Batteries,9.9,9.9
+64294.0,Odessa,31.871315,-102.398409,Batteries,9.9,9.9
+64295.0,Angleton,29.167065,-95.440647,Batteries,9.9,9.9
+64296.0,Brazoria,29.062635,-95.577587,Batteries,9.9,9.9
+64297.0,Heights,29.389595,-94.949867,Batteries,9.9,9.9
+64298.0,Magnolia TX,29.488335,-95.133947,Batteries,9.9,9.9
+64312.0,Bat Cave,30.737745,-99.231778,Batteries,100.0,110
+64314.0,Dickinson,29.461255,-95.056987,Batteries,9.9,9.9
+64315.0,Loop 463,28.816475,-97.074867,Batteries,9.9,9.9
+64316.0,Lopeno,26.687614,-99.109418,Batteries,9.9,9.9
+64317.0,North Fork TX,30.748955,-97.875708,Batteries,100.0,110
+64318.0,Pueblo BA,28.678935,-100.463708,Batteries,9.9,9.9
+64318.0,Pueblo BA,28.678935,-100.463708,Batteries,9.9,9.9
+64319.0,Ranchtown,29.617885,-98.735948,Batteries,9.9,9.9
+64321.0,Sweeny,29.055615,-95.687237,Batteries,9.9,9.9
+64322.0,Zapata,26.932675,-99.233708,Batteries,9.9,9.9
+64322.0,Zapata,26.932675,-99.233708,Batteries,9.9,9.9
+64423.0,TX7 Flat Top,31.19791,-103.36067,Batteries,9.9,16.5
+64424.0,TX8 Worsham,31.35658,-103.33645,Batteries,9.9,17.9
+64425.0,TX2 Port Lavaca,28.58673,-96.68376,Batteries,9.9,11.9
+64528.0,Gambit Energy Storage - Angleton Storage,29.16801,-95.445062,Batteries,100.0,200
+64545.0,Ranchland Wind Storage,32.308524,-99.164198,Batteries,73.0,108.6
+64672.0,"Blue Jay Solar I, LLC",30.705329,-96.069829,Batteries,51.6,84.5
+64811.0,Upton County BESS,31.23924,-102.32169,Batteries,24.8,25
+64915.0,Flower Valley I,31.197283,-103.361769,Batteries,9.9,19.8
+64916.0,Swoose I,31.45115,-103.096242,Batteries,9.9,19.8
+64917.0,Triple Butte I,30.75956,-103.06786,Batteries,7.5,15
+65028.0,"Roseland Solar Project, LLC",31.461242,-96.824928,Batteries,51.8,84.5
+65259.0,Byrd Ranch Storage,29.056,-95.686,Batteries,50.0,50
+65271.0,Noble Solar,33.261505,-97.238057,Batteries,125.0,125
+65410.0,Cunningham Storage,33.004305,-96.075913,Batteries,190.0,380
+65489.0,Dickens,33.781077,-100.883227,Batteries,200.0,200
+65490.0,Hydra,30.992905,-102.289475,Batteries,200.0,200
+65491.0,Paleo,33.889462,-101.80158,Batteries,200.0,200
+65492.0,Pavo,30.885123,-102.42261,Batteries,175.0,175
+65493.0,Tortolas,29.432362,-95.250698,Batteries,50.0,50
+65588.0,Antlia,29.806021,-100.804452,Batteries,70.0,140
+65589.0,Carina,27.81922,-97.535461,Batteries,150.0,300
+65644.0,Lumina II Solar Project,32.883528,-100.746389,Batteries,160.0,320
+65645.0,Lumina Solar Project,32.901081,-100.982695,Batteries,160.0,320
+65693.0,TX10 Hummingbird Storage,33.3256,-97.31433,Batteries,100.0,227
+65694.0,TX11 Republic Road Storage,30.881424,-96.62542,Batteries,50.0,50
+65695.0,TX12 Silicon Hill Storage,30.41217,-97.57405,Batteries,100.0,100
+65696.0,TX13 Endurance Park Storage,32.85583,-100.991681,Batteries,50.0,50
+65698.0,TX15 Limousin Oak Storage,30.65991,-95.973798,Batteries,100.0,227
+65699.0,TX19 River Valley Storage 1,30.41477,-97.35701,Batteries,50.0,111
+65700.0,TX21 River Valley Storage 2,30.41432,-97.35518,Batteries,50.0,107
+65701.0,TX23 Roughneck Storage,29.15923,-95.6626,Batteries,50.0,50
+65809.0,Caterina,28.34705,-99.673703,Batteries,9.9,9.9
+65810.0,Cedarville (TX),31.514106,-103.452361,Batteries,9.9,9.9
+65811.0,Coyote Springs (TX),31.39471,-103.630336,Batteries,9.9,9.9
+65812.0,Farmersville (TX),33.16111,-96.409125,Batteries,9.9,9.9
+65813.0,Faulkner,31.262381,-103.794852,Batteries,9.9,9.9
+65814.0,Gomez,31.036537,-103.024156,Batteries,9.9,9.9
+65829.0,Holcomb (TX),28.03534,-99.361732,Batteries,9.9,9.9
+65830.0,Junction (TX),30.492453,-99.770197,Batteries,9.9,9.9
+65831.0,Lonestar,31.594864,-103.249847,Batteries,9.9,9.9
+65832.0,Olney,33.371086,-98.720465,Batteries,9.9,9.9
+65833.0,Rattlesnake (TX),31.568978,-103.226631,Batteries,9.9,9.9
+65834.0,Saddleback BESS2,31.332883,-103.498425,Batteries,9.9,9.9
+65835.0,Screwbean,31.821423,-104.045071,Batteries,9.9,9.9
+65836.0,Toyah Power Station,31.113909,-103.66551,Batteries,10.4,9.9
+65837.0,Val Verde,26.234145,-98.079848,Batteries,9.9,9.9
+65860.0,Avila,30.904629,-102.915916,Batteries,160.0,320
+65861.0,Cachi,29.65313,-98.015155,Batteries,200.0,400
+66006.0,House Mountain,30.495668,-103.450965,Batteries,73.2,120
+66007.0,Flower Valley II,31.197285,-103.361771,Batteries,101.0,200
+66008.0,Swoose II,31.45115,-103.361771,Batteries,101.0,200
+66009.0,Crossett Power Management LLC,31.191687,-102.317227,Batteries,203.0,400
+66137.0,Zier Solar,29.350992,-100.562028,Batteries,40.4,80
+66170.0,Revolution,31.233457,-102.308519,Batteries,150.0,368.8
+66336.0,St. Gall Energy Storage I,30.924381,-102.953583,Batteries,102.6,200
+66337.0,Tidwell Prairie Storage 1,31.09828,-96.66368,Batteries,200.0,400
+66338.0,Callisto I Energy Center,29.646811,-95.450539,Batteries,223.4,200
+66420.0,Five Wells Solar Center - Hybrid,30.998647,-97.259017,Batteries,262.5,250
+66540.0,Shamrock Wind,30.936,-101.607,Batteries,100.0,100
+66616.0,Wolf Tank Storage,27.577207,-99.276018,Batteries,150.0,150
+66688.0,"Bright Arrow Solar, LLC",33.22392,-95.730767,Batteries,103.6,100
+66690.0,"Brazos Bend BESS, LLC",29.56318,-95.80023,Batteries,100.0,100
+66782.0,Hamilton BESS,29.376438,-100.848513,Batteries,9.9,9.9
+66783.0,Weil Tract BESS,27.796921,-97.487069,Batteries,9.9,9.9
+66784.0,Pauline BESS,32.335025,-96.057897,Batteries,9.9,9.9
+66788.0,Mineral Wells East BESS,32.798754,-98.064973,Batteries,9.9,9.9
+66789.0,Lufkin South BESS,31.291983,-94.724236,Batteries,9.9,9.9
+66790.0,Judkins BESS,31.715592,-102.598106,Batteries,9.9,9.9
+66791.0,Garden City East BESS,31.867209,-101.469373,Batteries,9.9,9.9
+66792.0,Falfurrias BESS,27.242427,-98.140545,Batteries,9.9,9.9
+66794.0,Diboll BESS,31.193794,-94.798183,Batteries,9.9,9.9
+66795.0,CISCO BESS,32.391533,-98.978156,Batteries,9.9,9.9
+66801.0,"Fence Post Solar Hybrid Project, LLC",32.072844,-96.22393,Batteries,72.0,115
+66804.0,Borden County BESS,32.72233,-101.638499,Batteries,150.0,300
+66871.0,"GulfStar Power, LLC",29.191296,-95.967518,Batteries,300.0,467
+66872.0,"Estonian Solar Project, LLC",33.457143,-95.667897,Batteries,100.0,158.3
+66905.0,Ables Springs Solar & Storage,32.819566,-96.184835,Batteries,100.0,157.7
+66926.0,SMT Mercedes LLC,26.230501,-97.912557,Batteries,10.0,10
+66927.0,SMT Mission LLC,26.189433,-98.322929,Batteries,10.0,10
+66928.0,SMT Santa Rosa LLC,26.232466,-97.823173,Batteries,10.0,10
+66929.0,SMT Alamo LLC,26.230677,-98.114039,Batteries,10.0,10
+66930.0,SMT Bay City LLC,28.987572,-95.969842,Batteries,10.0,10
+66931.0,SMT Elsa LLC,26.296101,-98.0096,Batteries,10.0,10
+66932.0,SMT Los Fresnos LLC,26.074676,-97.52318,Batteries,10.0,10
+66933.0,SMT Harlingen II LLC,26.179999,-97.725607,Batteries,10.0,10
+66934.0,SMT Rio Grande I LLC,26.408729,-98.937425,Batteries,10.0,10
+66935.0,SMT Rio Grande II LLC,26.390951,-98.820386,Batteries,10.0,10
+67019.0,"Copperhead Solar, LLC",31.45,-96.86,Batteries,100.0,100
+67083.0,"Longbow BESS, LLC",29.281605,-95.295533,Batteries,174.0,407.4
+67175.0,Rodeo Ranch Energy Storage,31.36,-103.33,Batteries,300.0,600
+67236.0,Anemoi Energy Storage,26.45,-98.48,Batteries,200.0,400
+67237.0,Ebony Energy Storage,29.620088,-98.334481,Batteries,207.9,400
+67284.0,Ganado Solar,29.109147,-96.528761,Batteries,70.5,115
+67493.0,Pavlov,28.994112,-96.126203,Batteries,9.9,9.9
+67494.0,Mainland,29.39521,-95.04077,Batteries,9.9,9.9
+67495.0,Russek,31.183494,-101.460355,Batteries,9.9,9.9
+67496.0,Sandlake,31.508786,-103.617546,Batteries,9.9,9.9
+67598.0,Desert Willow Energy Storage,32.452281,-97.072628,Batteries,150.0,300
+67721.0,Al Pastor Battery Storage Plant,32.7171,-101.9378,Batteries,100.3,145
+67737.0,SMT Ironman Battery Storage Plant,29.45566,-95.31001,Batteries,304.0,440.8
+67738.0,Citadel Battery Storage Plant,29.87404,-95.018244,Batteries,204.0,298
+67739.0,Wigeon Whistle Battery Storage Plant,33.030354,-96.357203,Batteries,120.0,174
+67740.0,Anole Energy Storage,32.552083,-96.539931,Batteries,240.0,480
+67752.0,Fort Duncan BESS,28.69954,-100.40353,Batteries,102.6,205.1
+67762.0,Stampede Solar Hybrid,33.201315,-95.319229,Batteries,72.2,115
+67843.0,Farmersville West,33.158,-96.402,Batteries,9.9,24.7
+67845.0,Junction BESS,30.516525,-99.767635,Batteries,9.9,24.7
+67860.0,GFTX BESS,30.228276,-97.618833,Batteries,125.0,250
+67861.0,Connolly BESS,33.210732,-97.418986,Batteries,125.0,250
+67963.0,Tynan,28.184044,-97.772903,Batteries,9.9,9.9
+67968.0,Burksol Energy Storage,33.781511,-100.877503,Batteries,100.0,200
+68146.0,Angelo Storage,31.513643,-100.583567,Batteries,100.0,249.4
+68189.0,Great Kiskadee Storage,26.104286,-98.171881,Batteries,100.0,249.4
+68423.0,St Gall Energy Storage II,30.924418,-102.953122,Batteries,100.0,200
+68460.0,Roadrunner Crossing Energy Storage,32.414193,-99.107744,Batteries,150.0,150
+68496.0,Lower Rio Energy Storage,26.206944,-98.058889,Batteries,60.0,120
+68513.0,"Cartwheel 1 - Storage, LLC",33.091192,-95.615097,Batteries,300.0,300
+68613.0,Guajillo Energy Storage,27.628889,-99.266389,Batteries,228.7,228.7
+68683.0,Crockett BESS,29.77682,-95.37989,Batteries,10.0,24.8
+68684.0,Century BESS,32.68657,-97.083253,Batteries,10.0,24.8
+68685.0,Liggett Switch,32.81479,-97.025,Batteries,10.0,12.4
+68686.0,Citrus City BESS,26.32162,-98.35149,Batteries,9.9,24.7
+68687.0,Rio Grande City BESS 2,26.39279,-98.81941,Batteries,9.9,24.7
+68809.0,Hidden Lakes Reliability Project,29.488956,-95.036514,Batteries,220.0,440
+68842.0,Chillingham Storage,31.005302,-97.263189,Batteries,150.0,150
+68874.0,Inertia Energy Storage,33.177277,-99.567743,Batteries,13.0,45
+68878.0,Longhorn Storage,32.428686,-99.159114,Batteries,165.0,165
+68879.0,Bocanova Energy Storage,29.435422,-95.251104,Batteries,150.0,300
+68895.0,Libra Storage,29.466592,-98.002839,Batteries,236.3,236.3
+68896.0,Sun Valley Storage,31.857837,-97.017128,Batteries,123.3,123
+68906.0,Pine Forest Solar I,33.100779,-95.392287,Batteries,200.0,200
+68912.0,Padua 1,29.325064,-98.325615,Batteries,50.0,200
+69026.0,Tanzanite Storage,32.230844,-95.8376,Batteries,283.2,283.2
+69045.0,Sealy BESS,29.847993,-96.198675,Batteries,200.0,400
+69244.0,Cross Trails Energy Storage Project,32.745,-100.757,Batteries,58.3,114
+69298.0,PP Jaguar BESS LLC,31.59992,-96.970541,Batteries,150.0,340
+69298.0,PP Jaguar BESS LLC,31.59992,-96.970541,Batteries,150.0,340
+69300.0,Regis Continental,26.514848,-98.609398,Batteries,9.9,9.9
+69301.0,Regis Gregory,27.921403,-97.309414,Batteries,9.9,9.9
+69302.0,Regis Palacios,28.757031,-96.211775,Batteries,9.9,9.9
+69331.0,Regis Carrizo Springs,28.517736,-99.833779,Batteries,9.9,9.9
+69333.0,Regis Goodwin LLC,26.247029,-98.451671,Batteries,9.9,9.9
+69334.0,Johnson City BESS,30.300444,-98.398333,Batteries,2.3,4.5
+69344.0,Regis Hearn,27.849367,-97.61106,Batteries,9.9,9.9
+69345.0,Regis Mason,30.738452,-99.232484,Batteries,9.9,9.9
+69346.0,Regis Monte Cristo LLC,26.36037,-98.31517,Batteries,9.9,9.9
+69347.0,Regis Muenster,33.641097,-97.332594,Batteries,9.9,9.9
+69348.0,Regis Pirate,28.028576,-97.520494,Batteries,9.9,9.9
+69349.0,Regis Falfurrias,27.241365,-98.140478,Batteries,9.9,9.9
+69350.0,Matta Power Station,31.040031,-103.652607,Batteries,10.0,23.2
+69352.0,"Citrus Flatts Energy Center, LLC",26.190675,-97.696129,Batteries,100.0,200
+69353.0,"Sunset Ridge Energy Center, LLC",28.92633,-99.09626,Batteries,9.9,19.8
+69365.0,SMT Dallas BESS,32.777246,-96.665008,Batteries,10.0,10
+69366.0,SME Mission II BESS,26.168115,-98.324481,Batteries,10.0,10
+69407.0,Dogfish BESS,30.918661,-102.85002,Batteries,75.0,75
+69411.0,Snyder BESS,32.705086,-100.905954,Batteries,10.0,20
+69413.0,Sweetwater BESS,32.457511,-100.443747,Batteries,10.0,20
+69414.0,Blevins Solar & Storage,31.211152,-97.185078,Batteries,180.0,360
+69415.0,Westover BESS,31.83553,-102.443498,Batteries,10.0,20
+69454.0,Crosby Clean Energy Center (BESS),29.872984,-95.016033,Batteries,12.0,20.9
+69456.0,Maverick Clean Energy Center (BESS),29.364519,-95.202205,Batteries,12.0,20.9
+69459.0,Spencer Clean Energy Center (BESS),29.660045,-95.191541,Batteries,12.0,20.9
+69460.0,Winmil Clean Energy Center (BESS),29.225635,-95.42969,Batteries,12.0,20.9
+69574.0,BESS TX Top Gear - BSHOU002,29.963075,-95.436929,Batteries,10.0,25.1
+69575.0,BESS TX Panda - BSHOU004,29.838018,-95.352721,Batteries,10.0,10
+69576.0,Non-PLD US-El Paso - BSSAT004,31.840393,-102.726358,Batteries,9.9,13.7
+69975.0,Telview ESS,29.57954,-95.487488,Batteries,10.0,19.9
+69976.0,I-Eye ESS,29.3133,-96.10837,Batteries,10.0,19.9
