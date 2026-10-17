@@ -1,0 +1,4 @@
+Proposed training period: April-July 2026
+Training interval-end cutoff UTC: 2026-08-01 05:00:00+00:00
+Daylight threshold MW: 1767.1292546000002
+Definition: solar_mw > 5% of training-period maximum
