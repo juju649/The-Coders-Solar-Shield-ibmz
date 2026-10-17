@@ -1,0 +1,5 @@
+period,rows,MAE persistence,MAE smart persistence,MAE model,skill vs persistence,skill vs smart persistence
+All daylight,2921,1282,465,331,74.2%,28.9%
+Morning (before 10),529,2919,674,320,89.0%,52.5%
+Midday (10-16),1464,360,326,290,19.6%,11.2%
+Evening (17-20),684,2255,620,426,81.1%,31.3%

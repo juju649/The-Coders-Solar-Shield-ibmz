@@ -1,0 +1,7 @@
+period,method,events,alerts,precision,recall,f1
+All daylight,Baseline rule,921,860,0.78,0.73,0.76
+All daylight,AI model,921,837,0.86,0.78,0.82
+Midday (10-16),Baseline rule,179,155,0.3,0.26,0.28
+Midday (10-16),AI model,179,41,0.49,0.11,0.18
+Evening (17-20),Baseline rule,638,608,0.96,0.91,0.93
+Evening (17-20),AI model,638,680,0.93,0.99,0.96
