@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solar Shield</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<style>
+:root{
+  --sky-top:#3E9DE0; --sky-bot:#D8F0FF; --ink:#14213D; --soft:#41506e;
+  --panel:rgba(255,255,255,.86); --panel-ink:#14213D; --line:rgba(20,33,61,.14);
+  --sun:#FFB020; --forecast:#1F8FBF; --battery:#1FA463; --alert:#E8384F; --dusk:#2B2560;
+  --display:"Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:16px/1.55 var(--body);color:var(--ink);
+  background:linear-gradient(180deg,var(--sky-top) 0%,var(--sky-bot) 70vh,var(--sky-bot) 100%);
+  background-attachment:fixed;transition:color .6s;font-variant-numeric:tabular-nums}
+a{color:inherit}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--sun);outline-offset:3px;border-radius:6px}
+
+/* nav */
+nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:22px;padding:12px clamp(16px,4vw,48px);
+  backdrop-filter:blur(10px);background:color-mix(in srgb,var(--sky-top) 55%,transparent)}
+.brand{font:800 22px var(--display);letter-spacing:-.5px;display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand svg{width:28px;height:28px}
+nav .links{display:flex;gap:18px;margin-left:auto;font-weight:700;font-size:15px}
+nav .links a{text-decoration:none;opacity:.8} nav .links a:hover{opacity:1}
+.zbadge{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;background:var(--panel);color:var(--panel-ink);font-size:14px;font-weight:700}
+.zbadge i{width:9px;height:9px;border-radius:50%;background:var(--battery);box-shadow:0 0 0 0 var(--battery);animation:ping 2s infinite}
+@keyframes ping{70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@media(max-width:760px){nav .links{display:none}}
+
+/* hero */
+.hero{position:relative;min-height:calc(100vh - 60px);display:grid;align-content:end;justify-items:start;padding:110px clamp(16px,4vw,48px) 48px;overflow:hidden;cursor:ew-resize;touch-action:pan-y}
+.scene{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+.hero > *:not(.scene){position:relative;z-index:1}
+.hero-copy{position:relative;max-width:820px;pointer-events:none}
+.hero h1{font:800 clamp(34px,4.8vw,70px)/1 var(--display);letter-spacing:-2px;margin:0 0 18px;font-variation-settings:"opsz" 96}
+.hero p{font-size:clamp(17px,1.6vw,21px);max-width:58ch;margin:0 0 22px;color:var(--soft)}
+.readout{position:relative;display:inline-flex;align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--panel);color:var(--panel-ink);padding:14px 20px;border-radius:18px 18px 18px 4px;pointer-events:auto}
+.readout b{font:800 34px var(--display);letter-spacing:-1px}
+.readout span{color:var(--soft)}
+.cta{display:inline-flex;align-items:center;gap:10px;margin-top:18px;padding:16px 26px;border:0;border-radius:99px;background:var(--ink);color:var(--sky-bot);font-weight:700;font-size:17px;cursor:pointer;pointer-events:auto;transition:transform .15s}
+.cta:hover{transform:translateY(-2px)} .cta:active{transform:translateY(1px)}
+.hint{position:relative;margin-top:14px;font-size:14px;background:var(--panel);color:var(--panel-ink);padding:6px 12px;border-radius:99px}
+.cloud{animation:drift linear infinite}
+@keyframes drift{from{transform:translateX(-300px)}to{transform:translateX(1500px)}}
+
+/* sections */
+section.block{padding:56px clamp(16px,4vw,48px)}
+h2{font:800 clamp(30px,3.6vw,48px)/1 var(--display);letter-spacing:-1.2px;margin:0 0 8px}
+.lede{color:var(--soft);max-width:62ch;margin:0 0 26px}
+.panel{background:var(--panel);color:var(--panel-ink);border-radius:22px;padding:22px;transition:background .6s,color .6s}
+
+/* console */
+.console{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px}
+@media(max-width:1080px){.console{grid-template-columns:1fr}}
+.daystrip{display:flex;gap:4px;overflow-x:auto;padding:4px 2px 12px;scrollbar-width:thin}
+.day{flex:0 0 auto;width:30px;border:0;border-radius:8px;padding:6px 0 4px;cursor:pointer;background:transparent;display:grid;justify-items:center;gap:3px;font-size:11px;color:var(--soft)}
+.day .bar{width:14px;border-radius:4px;background:var(--sun)}
+.day[aria-pressed=true]{background:var(--ink);color:var(--sky-bot)}
+.day[aria-pressed=true] .bar{background:var(--sky-bot)}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:6px 0 14px}
+.btn{border:2px solid var(--line);background:transparent;border-radius:99px;padding:9px 18px;font-weight:700;cursor:pointer}
+.btn.main{background:var(--sun);border-color:var(--sun);color:#1b1300;min-width:150px}
+.btn[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--sky-bot)}
+.seg{display:inline-flex;border:2px solid var(--line);border-radius:99px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:8px 13px;font-weight:700;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--sky-bot)}
+.clock{margin-left:auto;font:800 40px/1 var(--display);letter-spacing:-1px}
+label.toggle{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.chartwrap{position:relative}
+#chart{width:100%;height:auto;display:block;cursor:crosshair;touch-action:none}
+#chart text{fill:currentColor;opacity:.6;font:12px var(--body)}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--sky-bot);padding:8px 12px;border-radius:10px;font-size:13px;white-space:nowrap;transform:translate(-50%,-115%);opacity:0;transition:opacity .12s}
+input[type=range]{width:100%;accent-color:var(--sun)}
+.legend{display:flex;flex-wrap:wrap;gap:18px;font-size:14px;color:inherit;opacity:.8;margin-top:6px}
+.legend i{display:inline-block;width:18px;height:4px;border-radius:2px;margin-right:7px;vertical-align:middle}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}
+@media(max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat b{display:block;font:800 30px/1.1 var(--display);letter-spacing:-.8px}
+.stat span{font-size:13px;opacity:.7}
+
+/* alert card */
+.alertcard{position:relative;overflow:hidden;min-height:330px;display:flex;flex-direction:column}
+.alertcard.live{background:var(--alert);color:#fff}
+.alertcard h3{font:800 26px/1.05 var(--display);margin:0 0 10px;letter-spacing:-.5px}
+.idle{opacity:.75}
+.ring{width:96px;height:96px;flex:0 0 auto}
+.ring circle{fill:none;stroke-width:9}
+.ring .track{stroke:rgba(255,255,255,.25)} .ring .prog{stroke:#fff;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset 1.4s ease-out}
+.alerthead{display:flex;gap:16px;align-items:center;margin-bottom:12px}
+.big{font:800 38px/1 var(--display);letter-spacing:-1px}
+.rec{font-size:15px;margin:4px 0 16px}
+.dispatch{display:grid;gap:6px;margin-bottom:16px}
+.dispatch div{display:flex;justify-content:space-between;gap:10px;background:rgba(255,255,255,.16);padding:7px 11px;border-radius:10px;font-size:14px}
+.actions{display:flex;gap:10px;margin-top:auto}
+.actions .approve{background:#fff;color:var(--alert);border-color:#fff}
+.actions .dismiss{border-color:rgba(255,255,255,.6);color:#fff}
+.protected{margin-top:20px}
+.protected b{font:800 54px/1 var(--display);letter-spacing:-2px;display:block}
+.burst{position:absolute;pointer-events:none;width:10px;height:10px;border-radius:50%;background:var(--sun);animation:burst .9s ease-out forwards}
+@keyframes burst{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+#log{list-style:none;margin:12px 0 0;padding:0;max-height:180px;overflow:auto;font-size:14px}
+#log li{padding:7px 0;border-top:1px solid var(--line);display:flex;gap:10px}
+#log .tag{font-weight:700;min-width:84px}
+.sample{display:inline-block;margin-top:8px;font-size:13px;padding:4px 10px;border-radius:99px;background:rgba(255,176,32,.25)}
+
+/* pipeline */
+.pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;counter-reset:s}
+@media(max-width:900px){.pipe{grid-template-columns:1fr 1fr}}
+.step{position:relative;padding:20px;border-radius:20px;background:var(--panel);color:var(--panel-ink);transition:transform .3s,box-shadow .3s}
+.step::before{counter-increment:s;content:counter(s);font:800 44px/1 var(--display);opacity:.18;position:absolute;right:16px;top:12px}
+.step h3{font:800 20px var(--display);margin:0 0 6px}
+.step p{margin:0;font-size:15px;opacity:.8}
+.step .live{margin-top:12px;font:800 24px var(--display)}
+.step.on{transform:translateY(-6px);box-shadow:0 0 0 3px var(--sun)}
+
+/* results */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.bars{display:grid;gap:14px}
+.barrow{display:grid;grid-template-columns:170px 1fr 70px;align-items:center;gap:12px}
+@media(max-width:600px){.barrow{grid-template-columns:110px 1fr 60px}}
+.track{height:26px;border-radius:8px;background:var(--line);overflow:hidden}
+.fill{height:100%;border-radius:8px;width:0;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.skill{font:800 clamp(40px,5vw,64px)/1 var(--display);letter-spacing:-2px;margin-top:22px}
+.resgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:20px}
+@media(max-width:900px){.resgrid{grid-template-columns:1fr}}
+
+/* map */
+#map{height:440px;border-radius:16px}
+.mapgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px}
+@media(max-width:900px){.mapgrid{grid-template-columns:1fr}}
+.flow{stroke-dasharray:6 10;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.key{display:grid;gap:10px;font-size:15px}
+.key i{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:8px;vertical-align:-2px}
+footer{padding:40px clamp(16px,4vw,48px) 60px;font-size:15px;color:var(--soft)}
+footer b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<nav aria-label="Main">
+  <a class="brand" href="#top"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="7" fill="#FFB020"/><g stroke="#FFB020" stroke-width="2.5" stroke-linecap="round"><path d="M16 2v4M16 26v4M2 16h4M26 16h4M6 6l3 3M23 23l3 3M6 26l3-3M23 9l3-3"/></g></svg>Solar Shield</a>
+  <div class="links"><a href="#console">Replay</a><a href="#how">How it works</a><a href="#results">Results</a><a href="#map-section">Map</a></div>
+  <span class="zbadge" id="zbadge"><i></i><span id="platformText">Connecting</span></span>
+</nav>
+
+<header class="hero" id="top" aria-label="Interactive sky: move across to change the time of day">
+  <svg class="scene" id="scene" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <defs>
+      <radialGradient id="glow"><stop offset="0" stop-color="#FFE29A" stop-opacity=".9"/><stop offset="1" stop-color="#FFB020" stop-opacity="0"/></radialGradient>
+      <linearGradient id="panelg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3b5b8c"/><stop offset="1" stop-color="#1d2f52"/></linearGradient>
+    </defs>
+    <path id="arc" d="M620 520 Q880 -340 1140 520" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="2" stroke-dasharray="4 10"/>
+    <g id="clouds" opacity=".9">
+      <g class="cloud" style="animation-duration:70s"><ellipse cx="120" cy="150" rx="70" ry="26" fill="#fff"/><ellipse cx="160" cy="135" rx="46" ry="30" fill="#fff"/></g>
+      <g class="cloud" style="animation-duration:95s;animation-delay:-40s"><ellipse cx="120" cy="230" rx="90" ry="24" fill="#fff" opacity=".8"/><ellipse cx="170" cy="215" rx="50" ry="26" fill="#fff" opacity=".8"/></g>
+      <g class="cloud" style="animation-duration:120s;animation-delay:-80s"><ellipse cx="120" cy="90" rx="60" ry="18" fill="#fff" opacity=".7"/></g>
+    </g>
+    <g id="sun"><circle r="110" fill="url(#glow)"/><circle r="38" fill="#FFB020"/></g>
+    <path d="M0 600 L0 520 Q200 490 380 512 T760 505 T1200 515 L1200 600Z" fill="#2c3b2a" opacity=".85"/>
+    <g id="panels"></g>
+  </svg>
+  <div class="hero-copy">
+    <h1>Every evening, Texas loses 30,000&nbsp;MW of solar. We see each drop 15&nbsp;minutes early.</h1>
+    <p>Solar Shield forecasts ERCOT solar output on IBM LinuxONE and tells grid operators which batteries to dispatch so hospitals and people on home medical equipment keep their power.</p>
+  </div>
+  <div class="readout" id="heroReadout"><b id="heroMW">–</b><span id="heroTime">Move across the sky</span></div>
+  <div><button class="cta" id="heroCta">Replay a real day</button></div>
+  <div class="hint">Drag across the sky to move the sun. The solar reading comes from real ERCOT data.</div>
+</header>
+
+<section class="block" id="console" aria-labelledby="consoleTitle">
+  <h2 id="consoleTitle">Operator console</h2>
+  <p class="lede">Pick a day from the August–September test period. The model has never seen these days. Each bar shows how many real ramp-downs that day had.</p>
+  <div class="console">
+    <div class="panel">
+      <div class="daystrip" id="days" role="group" aria-label="Test days"></div>
+      <div class="controls">
+        <button class="btn main" id="play">Play replay</button>
+        <button class="btn" id="back" aria-label="Back 15 minutes">−15 min</button>
+        <button class="btn" id="fwd" aria-label="Forward 15 minutes">+15 min</button>
+        <div class="seg" role="group" aria-label="Speed"><button data-s="1" aria-pressed="true">1×</button><button data-s="2" aria-pressed="false">2×</button><button data-s="4" aria-pressed="false">4×</button></div>
+        <label class="toggle"><input type="checkbox" id="pauseOnAlert" checked> Pause on alerts</label>
+        <div class="clock" id="clock" aria-live="polite">--:--</div>
+      </div>
+      <div class="chartwrap">
+        <svg id="chart" viewBox="0 0 1000 380" role="img" aria-label="Solar output, forecast and alerts"></svg>
+        <div class="tip" id="tip"></div>
+      </div>
+      <input type="range" id="scrub" min="0" max="10" value="0" aria-label="Time of day">
+      <div class="legend">
+        <span><i style="background:var(--sun)"></i>Actual solar</span>
+        <span><i style="background:var(--forecast)"></i>Forecast made 15 min earlier</span>
+        <span><i style="background:var(--alert);width:10px;height:10px;border-radius:50%"></i>Ramp-down alert</span>
+        <span><i style="background:var(--ink);opacity:.5;height:10px;width:3px"></i>Real 500+ MW drop</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="sNow">–</b><span>Solar now (MW)</span></div>
+        <div class="stat"><b id="sNext">–</b><span>Forecast in 15 min (MW)</span></div>
+        <div class="stat"><b id="sCaught">–</b><span>Real drops caught today</span></div>
+        <div class="stat"><b id="sSpeed">–</b><span>Per forecast on LinuxONE</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel alertcard" id="alertCard" aria-live="assertive">
+        <div id="alertBody" class="idle">
+          <h3>All clear</h3>
+          <p>When the model expects solar to fall by 400 MW or more in the next 15 minutes, the alert and a battery plan appear here.</p>
+        </div>
+      </div>
+      <div class="panel protected">
+        <span>People protected in this session</span>
+        <b id="protected">0</b>
+        <ul id="log" aria-label="Operator decisions"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="how" aria-labelledby="howTitle">
+  <h2 id="howTitle">How a forecast becomes a decision</h2>
+  <p class="lede">These four steps run every 15 minutes. During a replay, the active step lights up.</p>
+  <div class="pipe">
+    <div class="step" id="st1"><h3>Read the grid</h3><p>ERCOT solar output and weather from five Texas solar regions.</p><div class="live" id="st1v">–</div></div>
+    <div class="step" id="st2"><h3>Forecast on IBM Z</h3><p>Gradient boosting on LinuxONE compares today against a clear-sky curve.</p><div class="live" id="st2v">–</div></div>
+    <div class="step" id="st3"><h3>Raise an alert</h3><p>A forecast drop of 400 MW or more triggers a ramp-down alert.</p><div class="live" id="st3v">–</div></div>
+    <div class="step" id="st4"><h3>Protect people first</h3><p>Batteries near the most electricity-dependent patients are dispatched after operator approval.</p><div class="live" id="st4v">–</div></div>
+  </div>
+</section>
+
+<section class="block" id="results" aria-labelledby="resTitle">
+  <h2 id="resTitle">How well it forecasts</h2>
+  <p class="lede">Average forecast error in MW on August–September 2026, lower is better. Smart persistence assumes today stays as cloudy as it is now, which is the standard baseline for solar forecasting.</p>
+  <div class="resgrid">
+    <div class="panel">
+      <div class="tabs" id="tabs" role="group" aria-label="Time of day"></div>
+      <div class="bars" id="bars"></div>
+      <div class="skill" id="skill">–</div>
+      <div id="skillText" style="opacity:.75"></div>
+    </div>
+    <div class="panel">
+      <h3 style="font:800 22px var(--display);margin:0 0 6px">Ramp-down alerts</h3>
+      <p style="opacity:.75;margin:0 0 16px">F1 balances catching real drops against false alarms. Higher is better.</p>
+      <div class="bars" id="f1bars"></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="map-section" aria-labelledby="mapTitle">
+  <h2 id="mapTitle">Who needs the power most</h2>
+  <p class="lede">Patient counts come from HHS emPOWER, aggregated by ZIP code. No personal data is used. When an operator approves an alert, the dispatched batteries light up and send power toward the highest-risk ZIP codes.</p>
+  <div class="mapgrid">
+    <div class="panel" style="padding:10px"><div id="map"></div></div>
+    <div class="panel key">
+      <div><i style="background:var(--sun)"></i>ZIP codes sized by electricity-dependent patients</div>
+      <div><i style="background:var(--alert)"></i>Hospitals</div>
+      <div><i style="background:var(--battery)"></i>Battery storage sites</div>
+      <div id="mapNote" style="opacity:.75;font-size:14px"></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <b>Solar Shield</b> was built for the IBM Z Datathon 2026, Wildcard track, by Sarosha, Ashlesh, Naomi and Juwairiya. Data: ERCOT Fuel Mix Report, Open-Meteo, HHS emPOWER, HIFLD Next, EIA-860. Forecasts are advisory; a human operator approves every action.
+</footer>
+
+<script src="vendor/leaflet.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const api = p => fetch(p).then(r => { if(!r.ok) throw new Error(p); return r.json(); });
+const fmt = n => Math.round(n).toLocaleString();
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let DAY=null, idx=0, timer=null, speed=1, protectedCount=0, current=null, map=null, flowLayer=null, MAP=null;
+
+/* ---------- sky colours follow the clock ---------- */
+const SKY=[[5,'#1a1745','#3a2e6e'],[6.5,'#3A3A78','#F7A76C'],[9,'#5DB4E8','#CDEBFA'],[13,'#3E9DE0','#D8F0FF'],
+           [16,'#5AA8D8','#FBE3B0'],[18,'#6C5BA8','#FF9A6B'],[19.5,'#2B2560','#E8677A'],[21,'#14123A','#3A2E6E']];
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)), mix=(a,b,t)=>'#'+hex(a).map((v,i)=>Math.round(v+(hex(b)[i]-v)*t).toString(16).padStart(2,'0')).join('');
+function setSky(h){
+  let i=SKY.findIndex(s=>s[0]>h); if(i<=0) i=i<0?SKY.length-1:1;
+  const a=SKY[i-1], b=SKY[i], t=Math.min(1,Math.max(0,(h-a[0])/(b[0]-a[0])));
+  const top=mix(a[1],b[1],t), bot=mix(a[2],b[2],t), r=document.documentElement.style;
+  r.setProperty('--sky-top',top); r.setProperty('--sky-bot',bot);
+  const dark = h<7.2 || h>18.6;
+  r.setProperty('--ink',dark?'#F7F4FF':'#14213D'); r.setProperty('--soft',dark?'#d6d1f0':'#41506e');
+  r.setProperty('--panel',dark?'rgba(35,30,80,.86)':'rgba(255,255,255,.86)'); r.setProperty('--panel-ink',dark?'#F7F4FF':'#14213D');
+  r.setProperty('--line',dark?'rgba(247,244,255,.18)':'rgba(20,33,61,.14)');
+  // sun on the arc
+  const p=Math.min(1,Math.max(0,(h-6.5)/(20-6.5))), x=620+520*p, y=520-4*430*p*(1-p);
+  $('sun').setAttribute('transform',`translate(${x},${Math.max(40,y)})`);
+  $('sun').style.opacity = (h<6.5||h>20)?0:1;
+  document.querySelectorAll('#panels rect').forEach(el=>el.setAttribute('fill', p>0.15&&p<0.85?'url(#panelg)':'#1d2a40'));
+}
+(function drawPanels(){ let s=''; for(let r=0;r<3;r++) for(let c=0;c<14;c++) s+=`<rect x="${620+c*38+r*10}" y="${532+r*20}" width="30" height="12" rx="2" transform="skewX(-25)" fill="url(#panelg)"/>`; $('panels').innerHTML=s; })();
+const toHour = t => { const [h,m]=t.split(':').map(Number); return h+m/60; };
+const to12 = t => { let [h,m]=t.split(':').map(Number); const ap=h>=12?'PM':'AM'; h=h%12||12; return `${h}:${String(m).padStart(2,'0')} ${ap}`; };
+
+/* ---------- boot ---------- */
+async function boot(){
+  try{
+    const s = await api('/api/status');
+        $('platformText').textContent = s.platform==='s390x' ? 'Live on IBM LinuxONE (s390x)' : `Running on ${s.platform}`;
+    results(s.results);
+    if(s.recommendation_data==='sample') $('mapNote').innerHTML='<span class="sample">Showing sample sites until the team data files are loaded.</span>';
+    const days = await api('/api/days');
+    buildDays(days);
+    const best=[...days].sort((a,b)=>b.caught-a.caught)[0];
+    await loadDay(best.day);
+    idx = DAY.points.findIndex(p=>p.t>='13:00'); if(idx<0) idx=0; render();
+    initMap();
+  }catch(e){ $('platformText').textContent='Backend not reachable'; console.error(e); }
+}
+
+function buildDays(days){
+  const max=Math.max(...days.map(d=>d.ramps),1);
+  $('days').innerHTML = days.map(d=>{
+    const dd=d.day.slice(5).replace('-','/');
+    return `<button class="day" data-d="${d.day}" aria-pressed="false" title="${d.day}: ${d.ramps} real drops, ${d.caught} caught"><span class="bar" style="height:${6+28*d.ramps/max}px"></span>${dd.split('/')[1]}</button>`;
+  }).join('');
+  $('days').querySelectorAll('.day').forEach(b=>b.onclick=()=>{ stop(); loadDay(b.dataset.d).then(()=>{idx=0;render();}); });
+}
+
+async function loadDay(d){
+  DAY = await api('/api/day?date='+d);
+  $('days').querySelectorAll('.day').forEach(b=>b.setAttribute('aria-pressed', b.dataset.d===d));
+  const strip=$('days'), sel=strip.querySelector(`[data-d="${d}"]`); if(sel) strip.scrollLeft = sel.offsetLeft - strip.clientWidth/2;
+  $('scrub').max = DAY.points.length-1;
+  $('sSpeed').textContent = `${DAY.per_row_us} µs`;
+  const caught = DAY.points.filter(p=>p.alert&&p.actual_ramp).length, real=DAY.points.filter(p=>p.actual_ramp).length;
+  $('sCaught').textContent = `${caught} of ${real}`;
+  $('st1v').textContent = `${DAY.rows} readings`; $('st3v').textContent = `${DAY.points.filter(p=>p.alert).length} alerts today`; $('st2v').textContent = `${DAY.per_row_us} µs each`;
+  clearAlert();
+}
+
+/* ---------- chart ---------- */
+const W=1000,H=380,PL=60,PR=18,T=16,B=36;
+let geo=null;
+function render(){
+  const pts=DAY.points, n=pts.length;
+  const maxY=Math.max(...pts.map(p=>Math.max(p.actual,p.forecast_next)))*1.06;
+  const x=i=>PL+(W-PL-PR)*i/(n-1), y=v=>T+(H-T-B)*(1-v/maxY);
+  geo={x,y,n};
+  let g='';
+  for(let k=0;k<=4;k++){ const v=maxY*k/4; g+=`<line x1="${PL}" x2="${W-PR}" y1="${y(v)}" y2="${y(v)}" stroke="currentColor" stroke-opacity=".1"/><text x="${PL-10}" y="${y(v)+4}" text-anchor="end">${Math.round(v/1000)}k</text>`; }
+  pts.forEach((p,i)=>{ if(p.t.endsWith(':00') && toHour(p.t)%2===0) g+=`<text x="${x(i)}" y="${H-10}" text-anchor="middle">${to12(p.t).replace(':00','')}</text>`; });
+  pts.forEach((p,i)=>{ if(p.actual_ramp) g+=`<line x1="${x(i)}" x2="${x(i)}" y1="${H-B-10}" y2="${H-B}" stroke="currentColor" stroke-opacity=".5" stroke-width="3"/>`; });
+  const path=(arr,fx,fy)=>arr.map((p,i)=>`${i?'L':'M'}${fx(i).toFixed(1)},${fy(p).toFixed(1)}`).join('');
+  const ghost=path(pts,x,p=>y(p.actual));
+  const past=pts.slice(0,idx+1);
+  const area=past.length>1?`${path(past,x,p=>y(p.actual))}L${x(idx)},${H-B}L${x(0)},${H-B}Z`:'';
+  // forecast made at step i is for step i+1
+  const fc=pts.slice(0,idx).map((p,i)=>`${i?'L':'M'}${x(i+1).toFixed(1)},${y(p.forecast_next).toFixed(1)}`).join('');
+  const nextF = idx<n-1 ? `<circle cx="${x(idx+1)}" cy="${y(pts[idx].forecast_next)}" r="6" fill="none" stroke="var(--forecast)" stroke-width="3"/><line x1="${x(idx)}" y1="${y(pts[idx].actual)}" x2="${x(idx+1)}" y2="${y(pts[idx].forecast_next)}" stroke="var(--forecast)" stroke-width="2" stroke-dasharray="3 4"/>`:'';
+  const dots=past.map((p,i)=>p.alert?`<circle cx="${x(i)}" cy="${y(p.actual)}" r="${i===idx?8:5}" fill="var(--alert)" stroke="var(--panel-ink)" stroke-opacity=".2"/>`:'').join('');
+  $('chart').innerHTML = g +
+    `<path d="${ghost}" fill="none" stroke="var(--sun)" stroke-opacity=".22" stroke-width="2"/>` +
+    `<path d="${area}" fill="var(--sun)" fill-opacity=".14"/>` +
+    `<path d="${fc}" fill="none" stroke="var(--forecast)" stroke-width="2.5" stroke-dasharray="7 5"/>` +
+    `<path d="${path(past,x,p=>y(p.actual))}" fill="none" stroke="var(--sun)" stroke-width="3.5" stroke-linejoin="round"/>` +
+    `<line x1="${x(idx)}" x2="${x(idx)}" y1="${T}" y2="${H-B}" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="2 5"/>` +
+    nextF + dots + `<circle cx="${x(idx)}" cy="${y(pts[idx].actual)}" r="7" fill="var(--sun)" stroke="#fff" stroke-width="3"/>`;
+  const p=pts[idx];
+  $('clock').textContent = to12(p.t); $('scrub').value=idx;
+  $('sNow').textContent=fmt(p.actual); $('sNext').textContent=fmt(p.forecast_next);
+  setSky(toHour(p.t));
+  heroRead(idx);
+}
+
+function heroRead(i){ const p=DAY.points[i]; $('heroMW').textContent=`${fmt(p.actual)} MW`; $('heroTime').textContent=`of solar on the Texas grid at ${to12(p.t)}, ${DAY.day}`; }
+
+function idxFromEvent(e, el, left, right){
+  const r=el.getBoundingClientRect(); const fx=(e.clientX-r.left)/r.width;
+  const px=fx*W; const t=(px-left)/(W-left-right); return Math.max(0,Math.min(DAY.points.length-1,Math.round(t*(DAY.points.length-1))));
+}
+let dragging=false;
+$('chart').addEventListener('pointerdown',e=>{dragging=true;stop();$('chart').setPointerCapture(e.pointerId);moveTo(idxFromEvent(e,$('chart'),PL,PR));});
+$('chart').addEventListener('pointermove',e=>{
+  if(!DAY) return; const i=idxFromEvent(e,$('chart'),PL,PR);
+  if(dragging){ moveTo(i); }
+  const p=DAY.points[i], r=$('chart').getBoundingClientRect();
+  const tip=$('tip'); tip.style.left=(geo.x(i)/W*r.width)+'px'; tip.style.top=(geo.y(p.actual)/H*r.height)+'px'; tip.style.opacity=1;
+  tip.innerHTML=`${to12(p.t)} · ${fmt(p.actual)} MW<br>Forecast for ${to12(p.t_next)}: ${fmt(p.forecast_next)} MW${p.alert?' · <b>alert</b>':''}`;
+});
+$('chart').addEventListener('pointerup',()=>dragging=false);
+$('chart').addEventListener('pointerleave',()=>{$('tip').style.opacity=0;});
+$('scrub').oninput=e=>{stop();moveTo(+e.target.value);};
+
+async function moveTo(i){ idx=i; render(); const p=DAY.points[idx]; if(p.alert) await showAlert(p,false); else clearAlert(); highlight(p.alert?3:2); }
+
+/* ---------- playback ---------- */
+function highlight(n){ ['st1','st2','st3','st4'].forEach((s,k)=>$(s).classList.toggle('on',k===n-1)); }
+async function tick(){
+  if(idx>=DAY.points.length-1){ stop(); return; }
+  idx++; render(); highlight(1); setTimeout(()=>highlight(2),120/speed);
+  const p=DAY.points[idx];
+  if(p.alert){ highlight(3); await showAlert(p,true); }
+  else if(!current) clearAlert();
+}
+function play(){ if(timer) return; if(idx>=DAY.points.length-1) idx=0; timer=setInterval(tick,700/speed); $('play').textContent='Pause replay'; $('play').setAttribute('aria-pressed','true'); }
+function stop(){ clearInterval(timer); timer=null; $('play').textContent='Play replay'; $('play').setAttribute('aria-pressed','false'); }
+$('play').onclick=()=> timer?stop():play();
+$('back').onclick=()=>{stop();moveTo(Math.max(0,idx-1));};
+$('fwd').onclick=()=>{stop();moveTo(Math.min(DAY.points.length-1,idx+1));};
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{ speed=+b.dataset.s; document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x===b)); if(timer){stop();play();} });
+document.addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT') return;
+  if(e.code==='Space'){e.preventDefault(); timer?stop():play();}
+  if(e.code==='ArrowRight'){stop();moveTo(Math.min(DAY.points.length-1,idx+1));}
+  if(e.code==='ArrowLeft'){stop();moveTo(Math.max(0,idx-1));}
+  if(e.key==='a'&&current) decide('approved'); if(e.key==='d'&&current) decide('dismissed'); });
+$('heroCta').onclick=()=>{ $('console').scrollIntoView(); idx=Math.max(0,DAY.points.findIndex(p=>p.t>='14:00')); render(); setTimeout(play, reduce?0:600); };
+
+/* hero: drag the sun */
+const hero=document.querySelector('.hero');
+hero.addEventListener('pointermove',e=>{
+  if(!DAY||timer) return; const r=hero.getBoundingClientRect(); const f=(e.clientX-r.left)/r.width;
+  idx=Math.round(f*(DAY.points.length-1)); render();
+});
+
+/* ---------- alerts ---------- */
+async function showAlert(p, fromPlay){
+  const rec = await api('/api/recommend?drop_mw='+Math.abs(p.predicted_change));
+  const people = rec.zips.reduce((s,z)=>s+z.patients,0);
+  current={time:`${DAY.day} ${p.t}`, predicted_change_mw:p.predicted_change, recommendation:rec.text, batteries:rec.batteries.map(b=>b.name), people, rec};
+  const card=$('alertCard'); card.classList.add('live');
+  const frac=Math.min(1,Math.abs(p.predicted_change)/2500), C=2*Math.PI*40;
+  $('alertBody').className='';
+  $('alertBody').innerHTML=`
+    <div class="alerthead">
+      <svg class="ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="40"/><circle class="prog" id="ringP" cx="50" cy="50" r="40" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg>
+      <div><div class="big">${fmt(p.predicted_change)} MW</div><div>expected by ${to12(p.t_next)}</div></div>
+    </div>
+    <h3>Ramp-down coming in 15 minutes</h3>
+    <p class="rec">Dispatch these batteries to cover about ${fmt(people)} electricity-dependent patients in the highest-risk ZIP codes.</p>
+    <div class="dispatch">${rec.batteries.map(b=>`<div><span>${b.name}</span><b>${fmt(b.capacity_mw)} MW</b></div>`).join('')||'<div>No battery within range. Escalate.</div>'}</div>
+    ${rec.source==='sample'?'<span class="sample">Sample sites</span>':''}
+    <div class="actions"><button class="btn approve" onclick="decide('approved')">Approve dispatch</button><button class="btn dismiss" onclick="decide('dismissed')">Dismiss</button></div>`;
+  requestAnimationFrame(()=>{ const r=$('ringP'); if(r) r.style.strokeDashoffset=C*(1-frac); });
+  showFlow(rec,false);
+  if(fromPlay && $('pauseOnAlert').checked) stop();
+}
+function clearAlert(){ current=null; $('alertCard').classList.remove('live'); $('alertBody').className='idle';
+  $('alertBody').innerHTML='<h3>All clear</h3><p>When the model expects solar to fall by 400 MW or more in the next 15 minutes, the alert and a battery plan appear here.</p>'; }
+
+async function decide(action){
+  if(!current) return; const c=current;
+  fetch('/api/decision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({time:c.time,predicted_change_mw:c.predicted_change_mw,recommendation:c.recommendation,batteries:c.batteries,action})});
+  const li=document.createElement('li'); li.innerHTML=`<span class="tag" style="color:${action==='approved'?'var(--battery)':'var(--alert)'}">${action==='approved'?'Approved':'Dismissed'}</span><span>${to12(c.time.slice(11))} · ${fmt(c.predicted_change_mw)} MW</span>`;
+  $('log').prepend(li);
+  if(action==='approved'){ countUp(protectedCount, protectedCount+c.people); protectedCount+=c.people; burst(); showFlow(c.rec,true); $('st4v').textContent=`${fmt(protectedCount)} people`; highlight(4); }
+  clearAlert();
+  if($('pauseOnAlert').checked && idx<DAY.points.length-1) play();
+}
+function countUp(a,b){ const el=$('protected'), t0=performance.now(), d=reduce?0:900;
+  (function f(t){ const k=d?Math.min(1,(t-t0)/d):1; el.textContent=fmt(a+(b-a)*(1-Math.pow(1-k,3))); if(k<1) requestAnimationFrame(f); })(t0); }
+function burst(){ if(reduce) return; const box=document.querySelector('.protected'), r=box.getBoundingClientRect();
+  for(let i=0;i<18;i++){ const s=document.createElement('span'); s.className='burst'; const a=Math.random()*Math.PI*2, d=60+Math.random()*90;
+    s.style.left=(40+Math.random()*60)+'px'; s.style.top='60px'; s.style.setProperty('--dx',Math.cos(a)*d+'px'); s.style.setProperty('--dy',Math.sin(a)*d+'px');
+    box.style.position='relative'; box.appendChild(s); setTimeout(()=>s.remove(),1000); } }
+
+/* ---------- results ---------- */
+let RES=null;
+function results(r){
+  RES=r; if(!r||!r.accuracy){ $('bars').textContent='Results files not found.'; return; }
+  $('tabs').innerHTML=r.accuracy.map((a,i)=>`<button class="btn" aria-pressed="${i===0}" data-i="${i}">${a.period}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{ $('tabs').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b)); showPeriod(+b.dataset.i); });
+  showPeriod(0);
+  if(r.alerts){ const keys=['All daylight','Evening (17-20)','Midday (10-16)'];
+    $('f1bars').innerHTML = keys.map(k=>{ const ai=r.alerts.find(a=>a.period===k&&a.method==='AI model'), bl=r.alerts.find(a=>a.period===k&&a.method==='Baseline rule'); if(!ai) return '';
+      return `<div style="font-weight:700;margin-top:6px">${k}</div>` + bar('AI model',ai.f1,1,'var(--forecast)',ai.f1.toFixed(2)) + bar('Simple rule',bl.f1,1,'currentColor',bl.f1.toFixed(2)); }).join('');
+    requestAnimationFrame(()=>document.querySelectorAll('#f1bars .fill').forEach(f=>f.style.width=f.dataset.w)); }
+}
+const bar=(label,v,max,color,txt)=>`<div class="barrow"><span>${label}</span><div class="track"><div class="fill" data-w="${Math.max(2,100*v/max)}%" style="background:${color};${color==='currentColor'?'opacity:.35':''}"></div></div><b>${txt}</b></div>`;
+function showPeriod(i){
+  const a=RES.accuracy[i], max=Math.max(a['MAE persistence'],a['MAE smart persistence'],a['MAE model']);
+  $('bars').innerHTML = bar('Persistence',a['MAE persistence'],max,'currentColor',fmt(a['MAE persistence'])) +
+    bar('Smart persistence',a['MAE smart persistence'],max,'var(--sun)',fmt(a['MAE smart persistence'])) +
+    bar('Solar Shield',a['MAE model'],max,'var(--forecast)',fmt(a['MAE model']));
+  requestAnimationFrame(()=>document.querySelectorAll('#bars .fill').forEach(f=>f.style.width=f.dataset.w));
+  $('skill').textContent=a['skill vs smart persistence']+' lower error';
+  $('skillText').textContent=`than smart persistence, ${a.period.toLowerCase()} (${a.rows.toLocaleString()} forecasts).`;
+}
+
+/* ---------- map ---------- */
+async function initMap(){
+  MAP = await api('/api/map');
+  if(!window.L){ $('map').innerHTML='<p style="padding:16px">The map library could not load. Check the browser’s internet connection.</p>'; return; }
+  map=L.map('map',{scrollWheelZoom:false}).setView([31.2,-99.3],6);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles © Esri'}).addTo(map);
+  const maxP=Math.max(...MAP.zips.map(z=>z.patients||0),1);
+  MAP.zips.forEach(z=>L.circle([z.lat,z.lon],{radius:2500+22000*(z.patients||0)/maxP,color:'#FFB020',weight:1,fillOpacity:.3}).bindTooltip(`ZIP ${z.zip}: ${z.patients} patients`).addTo(map));
+  MAP.hospitals.forEach(h=>L.circleMarker([h.lat,h.lon],{radius:4,color:'#E8384F',fillOpacity:.9,weight:1}).bindTooltip(h.name).addTo(map));
+  MAP.batteries.forEach(b=>L.circleMarker([b.lat,b.lon],{radius:6,color:'#1FA463',fillOpacity:.9,weight:1}).bindTooltip(`${b.name}: ${b.capacity_mw} MW`).addTo(map));
+  flowLayer=L.layerGroup().addTo(map);
+}
+function showFlow(rec, approved){
+  if(!map) return; flowLayer.clearLayers();
+  rec.batteries.forEach(b=>{
+    L.circleMarker([b.lat,b.lon],{radius:approved?14:11,color:'#1FA463',weight:3,fillOpacity:approved?.35:.1}).bindTooltip(`${approved?'Dispatched':'Proposed'}: ${b.name}`).addTo(flowLayer);
+    rec.zips.forEach(z=>L.polyline([[b.lat,b.lon],[z.lat,z.lon]],{color:approved?'#1FA463':'#E8384F',weight:approved?3:2,opacity:.8,className:'flow'}).addTo(flowLayer));
+  });
+}
+
+setSky(13);
+boot();
+</script>
+</body>
+</html>
