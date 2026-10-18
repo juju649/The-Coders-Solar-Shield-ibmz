@@ -296,7 +296,7 @@ class Briefer:
     def status(self):
         return {"available": self.llm is not None,
                 "model": os.path.basename(self.path) if self.path else None,
-                "runtime": "llama.cpp (zDNN/NNPA build)" if self.llm else None,
+                "runtime": "llama.cpp (IBM s390x build)" if self.llm else None,
                 "error": self.error}
 
     def brief(self, ctx):
@@ -319,12 +319,12 @@ class Briefer:
                   "Facts: Drop: 620 MW by 6:45 PM. Ramp probability: 88%. Batteries: Alpha Storage (150 MW). "
                   "Patients covered: 2,310. Hospitals: Memorial Hospital.\n"
                   "Briefing: Solar output is expected to fall about 620 MW by 6:45 PM, with an 88% chance of a major "
-                  "ramp-down. Dispatching Alpha Storage would protect about 2,310 patients near Memorial Hospital. "
+                  "ramp-down. Dispatching Alpha Storage would support the area of about 2,310 patients near Memorial Hospital. "
                   "Please approve or dismiss.\n\n"
                   "Facts: Drop: 450 MW by 5:15 PM. Ramp probability: 73%. Batteries: Bravo Battery (100 MW), "
                   "Cedar Energy (90 MW). Patients covered: 1,480. Hospitals: St. Luke's Clinic.\n"
                   "Briefing: Solar output is expected to fall about 450 MW by 5:15 PM, with a 73% chance of a major "
-                  "ramp-down. Dispatching Bravo Battery and Cedar Energy would protect about 1,480 patients near "
+                  "ramp-down. Dispatching Bravo Battery and Cedar Energy would support the area of about 1,480 patients near "
                   "St. Luke's Clinic. Please approve or dismiss.\n\n"
                   f"Facts: {facts}\nBriefing:")
         t0 = time.perf_counter()
@@ -337,7 +337,7 @@ class Briefer:
         if bad:
             out = {"text": (f"Solar output is expected to fall about {abs(ctx['drop_mw']):,.0f} MW by {ctx['time']}, "
                             f"with a {ctx['ramp_prob']:.0%} chance of a major ramp-down. Dispatching {ctx['batteries']} "
-                            f"would protect about {ctx['people']:,} patients near {ctx['hospitals']}. Please approve or dismiss."),
+                            f"would support the area of about {ctx['people']:,} patients near {ctx['hospitals']}. Please approve or dismiss."),
                    "generated_by": "template (model output failed validation)",
                    "seconds": round(time.perf_counter() - t0, 1)}
             self.cache[key] = out

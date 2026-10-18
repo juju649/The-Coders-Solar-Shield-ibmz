@@ -224,7 +224,7 @@ footer b{color:var(--ink)}
         </div>
       </div>
       <div class="panel protected">
-        <span>People protected in this session</span>
+        <span>Electricity-dependent patients in approved dispatch areas</span>
         <b id="protected">0</b>
         <ul id="log" aria-label="Operator decisions"></ul>
       </div>
@@ -239,7 +239,7 @@ footer b{color:var(--ink)}
     <div class="step" id="st1"><h3>Read the grid</h3><p>ERCOT solar output and weather from five Texas solar regions.</p><div class="live" id="st1v">–</div></div>
     <div class="step" id="st2"><h3>Two models on IBM Z</h3><p>One model forecasts the MW change; a second estimates the chance of a 500+ MW ramp-down.</p><div class="live" id="st2v">–</div></div>
     <div class="step" id="st3"><h3>Alert and brief</h3><p>A forecast drop of 400 MW or more raises an alert, and IBM Granite writes a plain-English briefing.</p><div class="live" id="st3v">–</div></div>
-    <div class="step" id="st4"><h3>Protect people first</h3><p>Batteries near the most electricity-dependent patients are dispatched after operator approval.</p><div class="live" id="st4v">–</div></div>
+    <div class="step" id="st4"><h3>People first</h3><p>Batteries near the areas with the most electricity-dependent patients are dispatched after operator approval.</p><div class="live" id="st4v">–</div></div>
   </div>
 </section>
 
@@ -263,7 +263,7 @@ footer b{color:var(--ink)}
 
 <section class="block" id="map-section" aria-labelledby="mapTitle">
   <h2 id="mapTitle">Who needs the power most</h2>
-  <p class="lede">Patient counts come from HHS emPOWER, aggregated by ZIP code. No personal data is used. When an operator approves an alert, the dispatched batteries light up and send power toward the highest-risk ZIP codes.</p>
+  <p class="lede">Patient counts are Medicare beneficiaries using electricity-dependent equipment (HHS emPOWER), aggregated by ZIP code. No personal data is used. When an operator approves an alert, the recommended batteries near the highest-risk ZIP codes light up. Grid batteries support the whole system; we prioritize sites near the people who depend on power most.</p>
   <div class="mapgrid">
     <div class="panel" style="padding:10px"><div id="map"></div></div>
     <div class="panel key">
@@ -446,7 +446,7 @@ async function showAlert(p, fromPlay){
     </div>
     <h3>Ramp-down coming in 15 minutes</h3>
     ${p.ramp_prob!=null?`<p class="rec" style="margin:-4px 0 8px">Second model: <b>${Math.round(p.ramp_prob*100)}%</b> chance of a 500+ MW ramp-down</p>`:''}
-    <p class="rec">Dispatch these batteries to cover about ${fmt(people)} electricity-dependent patients in the highest-risk ZIP codes.</p>
+    <p class="rec">Dispatch batteries near the highest-risk areas, home to about ${fmt(people)} electricity-dependent Medicare patients.</p>
     <div class="dispatch">${rec.batteries.map(b=>`<div><span>${b.name}</span><b>${fmt(b.capacity_mw)} MW</b></div>`).join('')||'<div>No battery within range. Escalate.</div>'}</div>
     ${rec.hospitals&&rec.hospitals.length?`<p class="rec" style="margin-top:-6px">Nearby hospitals: ${rec.hospitals.slice(0,3).map(h=>h.name).join(', ')}</p>`:''}
     ${rec.source==='sample'?'<span class="sample">Sample sites</span>':''}
@@ -471,7 +471,7 @@ async function decide(action){
   fetch('/api/decision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({time:c.time,predicted_change_mw:c.predicted_change_mw,recommendation:c.recommendation,batteries:c.batteries,action})});
   const li=document.createElement('li'); li.innerHTML=`<span class="tag" style="color:${action==='approved'?'var(--battery)':'var(--alert)'}">${action==='approved'?'Approved':'Dismissed'}</span><span>${to12(c.time.slice(11))} · ${fmt(c.predicted_change_mw)} MW</span>`;
   $('log').prepend(li);
-  if(action==='approved'){ countUp(protectedCount, protectedCount+c.people); protectedCount+=c.people; burst(); showFlow(c.rec,true); $('st4v').textContent=`${fmt(protectedCount)} people`; highlight(4); }
+  if(action==='approved'){ countUp(protectedCount, protectedCount+c.people); protectedCount+=c.people; burst(); showFlow(c.rec,true); $('st4v').textContent=`${fmt(protectedCount)} patients`; highlight(4); }
   clearAlert();
   if($('pauseOnAlert').checked && idx<DAY.points.length-1) play();
 }
