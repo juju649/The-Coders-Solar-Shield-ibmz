@@ -20,7 +20,7 @@ When the Texas grid failed in 2021, 246 people died. Grid failures hit vulnerabl
 
 1. Forecasts ERCOT solar output 15 minutes ahead on IBM LinuxONE
 2. A second model estimates the chance of a major (500+ MW) ramp-down
-3. Raises an alert when it expects a drop of 400 MW or more
+3. Raises an alert when it expects a major drop
 4. Finds the ZIP codes with the most electricity-dependent patients, the nearest hospitals, and nearby battery sites
 5. IBM Granite writes a plain-English briefing for the operator
 6. The operator approves or dismisses every recommendation
@@ -32,6 +32,8 @@ ERCOT solar + weather → features.csv → forecaster + ramp classifier (LinuxON
 hospitals + batteries + patient counts ─────────────────────────────→ battery plan
                                               IBM Granite briefing → operator approves
 ```
+
+![Architecture](docs/architecture.png)
 
 ## Data
 
@@ -61,14 +63,14 @@ All three run live in Docker on IBM LinuxONE. The forecaster compares today's ou
 | Evening | 426 MW | 620 MW | 31% |
 | Midday | 290 MW | 326 MW | 11% |
 
-Ramp-down alerts: F1 **0.82**, vs 0.76 for a simple rule. In the evening, when the biggest ramps happen, F1 is **0.96**.
+Ramp-down alerts: F1 **0.82**, vs 0.76 for a simple rule. In the evening, when the biggest ramps happen, F1 is **0.96** and we catch 99% of ramp-downs.
 
 Honest limitation: at midday, a simple rule still beats our model on sudden cloud drops (F1 0.18 vs 0.28), because hourly weather data can't see individual clouds. Satellite imagery is our next step.
 
 ## Running on IBM Z
 
 - Trained and served on IBM LinuxONE Community Cloud (s390x) in Docker containers
-- Training takes about 7 seconds; each forecast takes about 12 microseconds in batch
+- Training takes about 7 seconds; each forecast takes under 1 ms
 - IBM Granite runs locally on IBM Z, so no data leaves the platform
 - Predictive and generative AI run on the same machine
 - Forecaster exported to ONNX for IBM Z AI tooling
@@ -92,10 +94,27 @@ Honest limitation: at midday, a simple rule still beats our model on sudden clou
 | `app/` | Web app (backend + frontend) |
 | `src/` | Battery recommendation and map code |
 | `data/` | Cleaned data and results |
-| `docs/` | Screenshots, lab evidence, diagrams |
+| `docs/` | Screenshots, lab evidence, architecture diagram |
 
 ## How to run
 
 1. Run `notebooks/solarDataPreparation.ipynb` to make `features.csv`
 2. In LinuxONE Jupyter, put `features.csv` in `shared/` and run `notebooks/grid_resilience_model.ipynb`
 3. Start the app with Docker (see [`app/README.md`](app/README.md))
+
+## Open-source resources
+
+- [scikit-learn](https://scikit-learn.org) · [pandas](https://pandas.pydata.org) · [NumPy](https://numpy.org) · [joblib](https://joblib.readthedocs.io)
+- [ONNX](https://onnx.ai) · [skl2onnx](https://github.com/onnx/sklearn-onnx)
+- [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) · [IBM Granite 4.0](https://huggingface.co/ibm-granite)
+- [Leaflet](https://leafletjs.com) · [Esri basemap tiles](https://www.esri.com)
+- [IBM LinuxONE Jupyter Lab ML image](https://github.com/linuxone-community-cloud/jupyter-lab-ml)
+
+## Data sources
+
+- [ERCOT Fuel Mix Report](https://www.ercot.com/gridinfo/generation)
+- [Open-Meteo](https://open-meteo.com)
+- [HHS emPOWER](https://empowerprogram.hhs.gov)
+- [HIFLD](https://hifld-geoplatform.hub.arcgis.com)
+- [EIA-860](https://www.eia.gov/electricity/data/eia860/)
+- [U.S. Census ZCTA](https://www.census.gov/programs-surveys/geography/guidance/geo-areas/zctas.html)
