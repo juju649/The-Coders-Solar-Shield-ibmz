@@ -33,7 +33,7 @@ hospitals + batteries + patient counts ─────────────�
                                               IBM Granite briefing → operator approves
 ```
 
-![Architecture](docs/architecture.png)
+![Architecture](docs/architecture%20diagram.jpg)
 
 ## Data
 
