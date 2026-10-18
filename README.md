@@ -1,8 +1,9 @@
 # Solar Shield
 
-We forecast drops in Texas solar power 15 minutes ahead and recommend which batteries should protect the people who need power most.
+We forecast drops in Texas solar power 15 minutes ahead and recommend batteries near the people who depend on power most.
 
 IBM Z Datathon 2026 · Wildcard track · Event code SSF2026
+
 Team: Sarosha, Aashlesha, Naomi, Juwairiya
 
 **Live app (running on IBM LinuxONE):** http://148.100.98.89:5000
@@ -11,7 +12,9 @@ Demo video: coming soon · Slides: coming soon
 
 ## Why we built this
 
-Texas solar set a record of 34,665 MW in July 2026, and almost all of it disappears every evening, sometimes more than 5,000 MW in 15 minutes. Batteries can fill the gap, but operators need a heads-up and need to know where power matters most. When the grid fails, people on home oxygen and dialysis are hit first. Over 192,000 Texans rely on electricity-dependent medical equipment.
+Texas solar set a record of 34,665 MW in July 2026, and almost all of it disappears every evening. In our data, it fell by up to 5,263 MW in 15 minutes. Batteries can fill the gap, but operators need a heads-up and need to know where power matters most.
+
+When the Texas grid failed in 2021, 246 people died. Grid failures hit vulnerable people hardest. Over 192,000 Texas Medicare patients rely on electricity-dependent medical equipment at home, and the real number is likely higher.
 
 ## What it does
 
@@ -34,7 +37,7 @@ hospitals + batteries + patient counts ─────────────�
 
 - **ERCOT Fuel Mix:** statewide solar, every 15 minutes, April–September 2026
 - **Open-Meteo:** weather averaged over 5 Texas solar regions
-- **HHS emPOWER:** electricity-dependent patients by ZIP code (aggregated, no personal data)
+- **HHS emPOWER:** Medicare patients who use electricity-dependent equipment, by ZIP code (aggregated, no personal data)
 - **HIFLD Next:** 876 Texas hospitals
 - **EIA-860:** 205 Texas battery sites
 
@@ -44,29 +47,30 @@ We first labeled a "drop" as a 20% fall in 15 minutes, but almost every one turn
 
 | Model | What it does | Result |
 |---|---|---|
-| Gradient-boosting forecaster | Predicts the solar MW change 15 minutes ahead | 28.9% lower error than smart persistence |
+| Gradient-boosting forecaster | Predicts the solar MW change 15 minutes ahead | 29% lower error than smart persistence |
 | Gradient-boosting ramp classifier | Probability of a 500+ MW ramp-down | AUC 0.947 on unseen Aug–Sep data |
-| IBM Granite 4.0 (llama.cpp, zDNN build) | Writes the operator briefing | ~14 s per briefing on s390x |
+| IBM Granite 4.0 (llama.cpp, IBM s390x build) | Writes the operator briefing | ~14 s per briefing on s390x |
 
 All three run live in Docker on IBM LinuxONE. The forecaster compares today's output to a clear-sky reference built from the past 14 days, so it can tell normal sunset apart from weather. Trained on April–July, tested on August–September.
 
 ## Results (Aug–Sep 2026)
 
-| | Model | Smart persistence | Better by |
+| | Model | Smart persistence | Lower error by |
 |---|---|---|---|
 | All daylight | 331 MW error | 465 MW error | 29% |
 | Evening | 426 MW | 620 MW | 31% |
 | Midday | 290 MW | 326 MW | 11% |
 
-Ramp-down alerts: F1 **0.82**, vs 0.76 for a simple rule. In the evening we catch 99% of ramp-downs.
+Ramp-down alerts: F1 **0.82**, vs 0.76 for a simple rule. In the evening, when the biggest ramps happen, F1 is **0.96**.
 
-Midday cloud drops are still hard to catch, because hourly weather data can't see individual clouds. Satellite imagery would be the next step.
+Honest limitation: at midday, a simple rule still beats our model on sudden cloud drops (F1 0.18 vs 0.28), because hourly weather data can't see individual clouds. Satellite imagery is our next step.
 
 ## Running on IBM Z
 
 - Trained and served on IBM LinuxONE Community Cloud (s390x) in Docker containers
 - Training takes about 7 seconds; each forecast takes about 12 microseconds in batch
-- IBM Granite runs on IBM Z's on-chip AI acceleration (zDNN)
+- IBM Granite runs locally on IBM Z, so no data leaves the platform
+- Predictive and generative AI run on the same machine
 - Forecaster exported to ONNX for IBM Z AI tooling
 - Completed both IBM AI/ML labs (multi-model; predictive + generative)
 - Backend status: http://148.100.98.89:5000/api/status
@@ -77,6 +81,7 @@ Midday cloud drops are still hard to catch, because hourly weather data can't se
 - Only aggregated ZIP-level health data
 - A human approves every action, and every decision is logged
 - It doesn't control any real equipment
+- Grid batteries support the whole system; we prioritize sites near the people who depend on power most
 - Recommendations are based on location; we don't know actual grid connections or battery charge
 
 ## Repo layout
