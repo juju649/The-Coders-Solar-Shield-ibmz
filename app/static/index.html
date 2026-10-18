@@ -102,6 +102,9 @@ input[type=range]{width:100%;accent-color:var(--sun)}
 .dispatch{display:grid;gap:6px;margin-bottom:16px}
 .dispatch div{display:flex;justify-content:space-between;gap:10px;background:rgba(255,255,255,.16);padding:7px 11px;border-radius:10px;font-size:14px}
 .actions{display:flex;gap:10px;margin-top:auto}
+.brief{background:rgba(255,255,255,.16);border-radius:12px;padding:10px 12px;margin:0 0 14px;font-size:14px}
+.brief p{margin:6px 0 0;font-size:14.5px;line-height:1.45}
+#briefMeta{opacity:.8;font-size:12.5px}
 .actions .approve{background:#fff;color:var(--alert);border-color:#fff}
 .actions .dismiss{border-color:rgba(255,255,255,.6);color:#fff}
 .protected{margin-top:20px}
@@ -172,7 +175,7 @@ footer b{color:var(--ink)}
     <g id="panels"></g>
   </svg>
   <div class="hero-copy">
-    <h1>Every evening, Texas loses 30,000&nbsp;MW of solar. We see each drop 15&nbsp;minutes early.</h1>
+    <h1>Every evening, Texas loses 30,000&nbsp;MW of solar. We warn operators 15&nbsp;minutes before the steepest drops.</h1>
     <p>Solar Shield forecasts ERCOT solar output on IBM LinuxONE and tells grid operators which batteries to dispatch so hospitals and people on home medical equipment keep their power.</p>
   </div>
   <div class="readout" id="heroReadout"><b id="heroMW">–</b><span id="heroTime">Move across the sky</span></div>
@@ -234,8 +237,8 @@ footer b{color:var(--ink)}
   <p class="lede">These four steps run every 15 minutes. During a replay, the active step lights up.</p>
   <div class="pipe">
     <div class="step" id="st1"><h3>Read the grid</h3><p>ERCOT solar output and weather from five Texas solar regions.</p><div class="live" id="st1v">–</div></div>
-    <div class="step" id="st2"><h3>Forecast on IBM Z</h3><p>Gradient boosting on LinuxONE compares today against a clear-sky curve.</p><div class="live" id="st2v">–</div></div>
-    <div class="step" id="st3"><h3>Raise an alert</h3><p>A forecast drop of 400 MW or more triggers a ramp-down alert.</p><div class="live" id="st3v">–</div></div>
+    <div class="step" id="st2"><h3>Two models on IBM Z</h3><p>One model forecasts the MW change; a second estimates the chance of a 500+ MW ramp-down.</p><div class="live" id="st2v">–</div></div>
+    <div class="step" id="st3"><h3>Alert and brief</h3><p>A forecast drop of 400 MW or more raises an alert, and IBM Granite writes a plain-English briefing.</p><div class="live" id="st3v">–</div></div>
     <div class="step" id="st4"><h3>Protect people first</h3><p>Batteries near the most electricity-dependent patients are dispatched after operator approval.</p><div class="live" id="st4v">–</div></div>
   </div>
 </section>
@@ -442,14 +445,23 @@ async function showAlert(p, fromPlay){
       <div><div class="big">${fmt(p.predicted_change)} MW</div><div>expected by ${to12(p.t_next)}</div></div>
     </div>
     <h3>Ramp-down coming in 15 minutes</h3>
+    ${p.ramp_prob!=null?`<p class="rec" style="margin:-4px 0 8px">Second model: <b>${Math.round(p.ramp_prob*100)}%</b> chance of a 500+ MW ramp-down</p>`:''}
     <p class="rec">Dispatch these batteries to cover about ${fmt(people)} electricity-dependent patients in the highest-risk ZIP codes.</p>
     <div class="dispatch">${rec.batteries.map(b=>`<div><span>${b.name}</span><b>${fmt(b.capacity_mw)} MW</b></div>`).join('')||'<div>No battery within range. Escalate.</div>'}</div>
     ${rec.hospitals&&rec.hospitals.length?`<p class="rec" style="margin-top:-6px">Nearby hospitals: ${rec.hospitals.slice(0,3).map(h=>h.name).join(', ')}</p>`:''}
     ${rec.source==='sample'?'<span class="sample">Sample sites</span>':''}
+    <div class="brief" id="briefBox"><b>AI briefing</b> <span id="briefMeta">IBM Granite on LinuxONE is writing…</span><p id="briefText"></p></div>
     <div class="actions"><button class="btn approve" onclick="decide('approved')">Approve dispatch</button><button class="btn dismiss" onclick="decide('dismissed')">Dismiss</button></div>`;
   requestAnimationFrame(()=>{ const r=$('ringP'); if(r) r.style.strokeDashoffset=C*(1-frac); });
   showFlow(rec,false);
   if(fromPlay && $('pauseOnAlert').checked) stop();
+  const myAlert = current;
+  const qs = new URLSearchParams({drop_mw:p.predicted_change, time:to12(p.t_next), ramp_prob:p.ramp_prob??0,
+    batteries:rec.batteries.map(b=>`${b.name} (${Math.round(b.capacity_mw)} MW)`).join(', '), people,
+    hospitals:(rec.hospitals||[]).slice(0,2).map(h=>h.name).join(', ')});
+  api('/api/brief?'+qs).then(b=>{ if(current!==myAlert||!$('briefText')) return;
+    $('briefText').textContent=b.text; $('briefMeta').textContent=`${b.generated_by}${b.seconds?` · ${b.seconds}s`:''}`; })
+    .catch(()=>{ if($('briefMeta')) $('briefMeta').textContent='briefing unavailable'; });
 }
 function clearAlert(){ current=null; $('alertCard').classList.remove('live'); $('alertBody').className='idle';
   $('alertBody').innerHTML='<h3>All clear</h3><p>When the model expects solar to fall by 400 MW or more in the next 15 minutes, the alert and a battery plan appear here.</p>'; }

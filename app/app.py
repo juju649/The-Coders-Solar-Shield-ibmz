@@ -67,6 +67,34 @@ class Forecaster:
         self.test["predicted_solar_15"] = self.test["solar_mw"] + self.test["predicted_change"]
         self.test["alert"] = (self.test["predicted_change"] <= -self.alert_mw).astype(int)
         self.test["actual_ramp"] = ((self.test["target_solar_15"] - self.test["solar_mw"]) <= -self.ramp_mw).astype(int)
+        self.train_classifier(day)
+
+    def train_classifier(self, day):
+        """Second model: a gradient-boosting classifier that estimates the probability of a
+        500+ MW ramp-down in the next 15 minutes. Trained on Apr-Jul (same split and purge as
+        the notebook), evaluated on the unseen Aug-Sep test set. Runs on LinuxONE at startup."""
+        from sklearn.ensemble import HistGradientBoostingClassifier
+        from sklearn.metrics import roc_auc_score, precision_score, recall_score, f1_score
+        train = day[day["time_utc"] + pd.Timedelta("15min") < VALID_END]
+        y = ((train["target_solar_15"] - train["solar_mw"]) <= -self.ramp_mw).astype(int)
+        t0 = time.perf_counter()
+        pos = max(float(y.mean()), 1e-6)
+        w = np.where(y == 1, 0.5 / pos, 0.5 / (1 - pos))
+        self.clf = HistGradientBoostingClassifier(max_iter=300, learning_rate=0.05, random_state=42)
+        self.clf.fit(train[self.features], y, sample_weight=w)
+        self.clf_train_s = time.perf_counter() - t0
+        prob = self.clf.predict_proba(self.test[self.features])[:, 1]
+        self.test["ramp_prob"] = prob
+        yt = self.test["actual_ramp"]
+        both = ((self.test["alert"] == 1) & (prob >= 0.5)).astype(int)
+        self.clf_metrics = {
+            "model": "HistGradientBoostingClassifier",
+            "train_seconds": round(self.clf_train_s, 2),
+            "test_auc": round(float(roc_auc_score(yt, prob)), 3),
+            "classifier_f1_at_0.5": round(float(f1_score(yt, (prob >= 0.5).astype(int))), 2),
+            "agreement_alerts_precision": round(float(precision_score(yt, both, zero_division=0)), 2),
+            "agreement_alerts_recall": round(float(recall_score(yt, both, zero_division=0)), 2),
+        }
 
     def days(self):
         g = self.test.groupby("day").agg(alerts=("alert", "sum"), ramps=("actual_ramp", "sum"),
@@ -85,7 +113,9 @@ class Forecaster:
         points = []
         for i, (idx, r) in enumerate(rows.iterrows()):
             c = float(change[i])
+            pr = float(r["ramp_prob"]) if "ramp_prob" in r else None
             points.append({
+                "ramp_prob": round(pr, 3) if pr is not None else None,
                 "t": local.loc[idx].strftime("%H:%M"),
                 "t_next": (local.loc[idx] + pd.Timedelta("15min")).strftime("%H:%M"),
                 "actual": round(float(r["solar_mw"]), 1),
@@ -232,9 +262,98 @@ class Recommender:
                 "zips": self.zips.head(limit)[["zip", "lat", "lon", "patients", "near_hospital"]].to_dict("records")}
 
 
+# ----------------------------------------------------------------------------- generative AI layer
+class Briefer:
+    """Generative AI: IBM Granite (GGUF) served by llama.cpp on LinuxONE, using the zDNN/NNPA
+    build that ships in IBM's LinuxONE Jupyter image. Turns the two predictive models' outputs
+    and the recommendation into a short operator briefing. Falls back to a template if the
+    model is not available."""
+    SEARCH = ["/home/ibm-user", "/home/jovyan", "/opt", "/models", "/root"]
+
+    def __init__(self):
+        self.llm, self.path, self.error, self.cache = None, None, None, {}
+        self.lock = threading.Lock()
+        self.path = os.environ.get("LLM_PATH") or self.find_model()
+        if not self.path:
+            self.error = "no .gguf model found"
+            return
+        try:
+            from llama_cpp import Llama
+            self.llm = Llama(model_path=self.path, n_ctx=2048, n_threads=os.cpu_count() or 2, verbose=False)
+        except Exception as e:
+            self.llm, self.error = None, f"{type(e).__name__}: {e}"
+
+    def find_model(self):
+        import glob
+        found = []
+        for root in self.SEARCH:
+            found += glob.glob(os.path.join(root, "**", "*.gguf"), recursive=True)
+        found = [f for f in found if os.path.getsize(f) > 50_000_000]
+        granite = [f for f in found if "granite" in os.path.basename(f).lower()]
+        pick = granite or found
+        return min(pick, key=os.path.getsize) if pick else None
+
+    def status(self):
+        return {"available": self.llm is not None,
+                "model": os.path.basename(self.path) if self.path else None,
+                "runtime": "llama.cpp (zDNN/NNPA build)" if self.llm else None,
+                "error": self.error}
+
+    def brief(self, ctx):
+        key = json.dumps(ctx, sort_keys=True)
+        if key in self.cache:
+            return self.cache[key]
+        if self.llm is None:
+            text = (f"Solar output is forecast to fall about {abs(ctx['drop_mw']):,.0f} MW by {ctx['time']}"
+                    f" (ramp probability {ctx['ramp_prob']:.0%}). Dispatching {ctx['batteries']} would cover"
+                    f" about {ctx['people']:,} electricity-dependent patients near {ctx['hospitals']}."
+                    f" Please approve or dismiss.")
+            out = {"text": text, "generated_by": "template (language model unavailable)", "seconds": 0}
+            self.cache[key] = out
+            return out
+        # Base (non-instruct) model: use a few-shot completion prompt it can continue,
+        # then validate the output and fall back to the template if it is unusable.
+        facts = (f"Drop: {abs(ctx['drop_mw']):,.0f} MW by {ctx['time']}. Ramp probability: {ctx['ramp_prob']:.0%}. "
+                 f"Batteries: {ctx['batteries']}. Patients covered: {ctx['people']:,}. Hospitals: {ctx['hospitals']}.")
+        prompt = ("Grid operator briefings.\n\n"
+                  "Facts: Drop: 620 MW by 6:45 PM. Ramp probability: 88%. Batteries: Alpha Storage (150 MW). "
+                  "Patients covered: 2,310. Hospitals: Memorial Hospital.\n"
+                  "Briefing: Solar output is expected to fall about 620 MW by 6:45 PM, with an 88% chance of a major "
+                  "ramp-down. Dispatching Alpha Storage would protect about 2,310 patients near Memorial Hospital. "
+                  "Please approve or dismiss.\n\n"
+                  "Facts: Drop: 450 MW by 5:15 PM. Ramp probability: 73%. Batteries: Bravo Battery (100 MW), "
+                  "Cedar Energy (90 MW). Patients covered: 1,480. Hospitals: St. Luke's Clinic.\n"
+                  "Briefing: Solar output is expected to fall about 450 MW by 5:15 PM, with a 73% chance of a major "
+                  "ramp-down. Dispatching Bravo Battery and Cedar Energy would protect about 1,480 patients near "
+                  "St. Luke's Clinic. Please approve or dismiss.\n\n"
+                  f"Facts: {facts}\nBriefing:")
+        t0 = time.perf_counter()
+        with self.lock:
+            r = self.llm.create_completion(prompt, max_tokens=90, temperature=0.1, top_p=0.9,
+                                           stop=["\n", "Facts:", "Grid operator"])
+        text = r["choices"][0]["text"].strip()
+        bad = (len(text) < 40 or "Facts" in text or "You are" in text
+               or f"{abs(ctx['drop_mw']):,.0f}" not in text)
+        if bad:
+            out = {"text": (f"Solar output is expected to fall about {abs(ctx['drop_mw']):,.0f} MW by {ctx['time']}, "
+                            f"with a {ctx['ramp_prob']:.0%} chance of a major ramp-down. Dispatching {ctx['batteries']} "
+                            f"would protect about {ctx['people']:,} patients near {ctx['hospitals']}. Please approve or dismiss."),
+                   "generated_by": "template (model output failed validation)",
+                   "seconds": round(time.perf_counter() - t0, 1)}
+            self.cache[key] = out
+            return out
+        if not text.endswith("."):
+            text = text.rsplit(".", 1)[0] + "." if "." in text else text
+        out = {"text": text, "generated_by": os.path.basename(self.path) + " on " + platform.machine(),
+               "seconds": round(time.perf_counter() - t0, 1)}
+        self.cache[key] = out
+        return out
+
+
 # ----------------------------------------------------------------------------- HTTP layer
 FORECASTER = Forecaster()
 RECOMMENDER = Recommender()
+BRIEFER = Briefer()
 DECISIONS = []
 LOCK = threading.Lock()
 
@@ -278,6 +397,9 @@ class Handler(SimpleHTTPRequestHandler):
                 "model": type(FORECASTER.model).__name__, "alert_mw": FORECASTER.alert_mw,
                 "ramp_mw": FORECASTER.ramp_mw, "test_rows": len(FORECASTER.test),
                 "startup_inference_ms": round(FORECASTER.startup_ms, 2),
+                "models": {"forecaster": type(FORECASTER.model).__name__,
+                           "ramp_classifier": FORECASTER.clf_metrics,
+                           "generative": BRIEFER.status()},
                 "recommendation_data": RECOMMENDER.source, "recommendation_note": RECOMMENDER.note,
                 "results": results_summary()})
         if u.path == "/api/days":
@@ -287,6 +409,11 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(data if data else {"error": "unknown date"}, 200 if data else 404)
         if u.path == "/api/recommend":
             return self.send_json(RECOMMENDER.recommend(q.get("drop_mw", FORECASTER.alert_mw)))
+        if u.path == "/api/brief":
+            ctx = {"drop_mw": float(q.get("drop_mw", 0)), "time": q.get("time", ""),
+                   "ramp_prob": float(q.get("ramp_prob", 0) or 0), "batteries": q.get("batteries", ""),
+                   "people": int(float(q.get("people", 0) or 0)), "hospitals": q.get("hospitals", "")}
+            return self.send_json(BRIEFER.brief(ctx))
         if u.path == "/api/map":
             return self.send_json(RECOMMENDER.map_data())
         if u.path == "/api/decisions":
@@ -312,6 +439,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     print(f"Solar Shield on {platform.machine()} | {len(FORECASTER.test)} test rows scored in "
-          f"{FORECASTER.startup_ms:.1f} ms | recommendations: {RECOMMENDER.note}")
+          f"{FORECASTER.startup_ms:.1f} ms | ramp classifier AUC {FORECASTER.clf_metrics['test_auc']} | "
+          f"generative AI: {BRIEFER.status()} | recommendations: {RECOMMENDER.note}")
     print(f"Open http://<server-ip>:{PORT}")
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
